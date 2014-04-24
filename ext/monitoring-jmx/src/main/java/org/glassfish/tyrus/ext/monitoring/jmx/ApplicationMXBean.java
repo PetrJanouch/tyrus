@@ -55,7 +55,7 @@ public interface ApplicationMXBean {
      *
      * @return monitored endpoint properties.
      */
-    Set<MonitoredEndpointProperties> getEndpoints();
+    List<MonitoredEndpointProperties> getEndpoints();
 
     /**
      * Exposes monitored endpoint paths.
