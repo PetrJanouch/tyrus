@@ -76,6 +76,7 @@ import org.glassfish.tyrus.core.cluster.ClusterSession;
 import org.glassfish.tyrus.core.cluster.SessionEventListener;
 import org.glassfish.tyrus.core.coder.CoderWrapper;
 import org.glassfish.tyrus.core.l10n.LocalizationMessages;
+import org.glassfish.tyrus.core.monitoring.MessageEventListener;
 
 /**
  * Implementation of the {@link Session}.
@@ -121,6 +122,7 @@ public class TyrusSession implements Session {
     private InputStreamBuffer inputStreamBuffer;
     private volatile long heartbeatInterval;
     private volatile ScheduledFuture<?> heartbeatTask;
+    private volatile MessageEventListener messageEventListener = MessageEventListener.NO_OP;
 
     TyrusSession(WebSocketContainer container, TyrusWebSocket socket, TyrusEndpointWrapper endpointWrapper,
                  String subprotocol, List<Extension> extensions, boolean isSecure,
@@ -175,6 +177,7 @@ public class TyrusSession implements Session {
             userProperties = new HashMap<String, Object>();
             distributedPropertyMap = null;
         }
+
     }
 
     /**
@@ -606,6 +609,10 @@ public class TyrusSession implements Session {
 
     void setInputStreamBuffer(InputStreamBuffer inputStreamBuffer) {
         this.inputStreamBuffer = inputStreamBuffer;
+    }
+
+    void setMessageEventListener(MessageEventListener messageEventListener) {
+        this.messageEventListener = messageEventListener;
     }
 
     @Override

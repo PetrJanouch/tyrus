@@ -65,6 +65,7 @@ import org.glassfish.tyrus.core.frame.CloseFrame;
 import org.glassfish.tyrus.core.frame.Frame;
 import org.glassfish.tyrus.core.l10n.LocalizationMessages;
 import org.glassfish.tyrus.core.monitoring.ApplicationEventListener;
+import org.glassfish.tyrus.core.monitoring.EndpointEventListener;
 import org.glassfish.tyrus.core.uri.Match;
 import org.glassfish.tyrus.core.wsadl.model.Application;
 import org.glassfish.tyrus.spi.Connection;
@@ -344,7 +345,9 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
         if (collector.isEmpty()) {
             register(endpointWrapper);
 
-            applicationEventListener.onEndpointRegistered(endpointClass, endpointWrapper.getServerEndpointPath());
+            EndpointEventListener endpointEventListener = applicationEventListener.onEndpointRegistered(endpointWrapper.getServerEndpointPath(), endpointClass);
+            endpointWrapper.setEndpointEventListener(endpointEventListener);
+
         } else {
             throw collector.composeComprehensiveException();
         }
@@ -386,7 +389,8 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
         }
 
         register(endpointWrapper);
-        applicationEventListener.onEndpointRegistered(endpointClass, endpointWrapper.getServerEndpointPath());
+        EndpointEventListener endpointEventListener = applicationEventListener.onEndpointRegistered(endpointWrapper.getServerEndpointPath(), endpointClass);
+        endpointWrapper.setEndpointEventListener(endpointEventListener);
     }
 
     private void checkPath(TyrusEndpointWrapper endpoint) throws DeploymentException {

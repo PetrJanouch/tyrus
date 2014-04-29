@@ -43,27 +43,29 @@ package org.glassfish.tyrus.ext.monitoring.jmx;
 import java.beans.ConstructorProperties;
 
 /**
- * Properties of an endpoint exposed by JMX.
+ * Path and class name of an endpoint exposed by JMX.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  * @see {@link org.glassfish.tyrus.core.monitoring.ApplicationEventListener}.
  */
 public class MonitoredEndpointProperties {
 
-    private final String endpointClassName;
     private final String endpointPath;
+    private final String endpointClassName;
 
     /**
-     * @param endpointClassName class name of an endpoint.
-     * @param endpointPath      the URL the endpoint is registered on.
+     * @param endpointPath      the path the endpoint is registered on.
+     * @param endpointClassName the class name of the endpoint.
      */
-    @ConstructorProperties({"endpointClassName", "endpointPath"})
-    public MonitoredEndpointProperties(String endpointClassName, String endpointPath) {
-        this.endpointClassName = endpointClassName;
+    @ConstructorProperties({"endpointPath", "endpointClassName"})
+    public MonitoredEndpointProperties(String endpointPath, String endpointClassName) {
         this.endpointPath = endpointPath;
+        this.endpointClassName = endpointClassName;
     }
 
     /**
+     * Returns class name of the endpoint.
+     *
      * @return class name of the endpoint.
      */
     public String getEndpointClassName() {
@@ -71,7 +73,9 @@ public class MonitoredEndpointProperties {
     }
 
     /**
-     * @return the URI the endpoint is registered on.
+     * Returns the path the endpoint is registered on.
+     *
+     * @return the path the endpoint is registered on.
      */
     public String getEndpointPath() {
         return endpointPath;

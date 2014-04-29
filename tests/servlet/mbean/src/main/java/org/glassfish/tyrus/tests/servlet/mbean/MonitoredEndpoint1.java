@@ -65,8 +65,8 @@ public class MonitoredEndpoint1 {
 
     @OnOpen
     public void onOpen(Session session) throws IOException {
-        if (isEndpointRegistered("/mbean-test", new MonitoredEndpointProperties(MonitoredEndpoint1.class.getName(), "/monitoredEndpoint1"))
-                && isEndpointRegistered("/mbean-test", new MonitoredEndpointProperties(MonitoredEndpoint2.class.getName(), "/monitoredEndpoint2"))) {
+        if (isEndpointRegistered("/mbean-test", new MonitoredEndpointProperties("/monitoredEndpoint1", MonitoredEndpoint1.class.getName()))
+                && isEndpointRegistered("/mbean-test", new MonitoredEndpointProperties("/monitoredEndpoint2", MonitoredEndpoint2.class.getName()))) {
             session.getBasicRemote().sendText("OK");
             return;
         }

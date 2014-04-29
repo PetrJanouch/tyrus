@@ -60,6 +60,7 @@ import org.glassfish.tyrus.core.frame.Frame;
 import org.glassfish.tyrus.core.frame.TextFrame;
 import org.glassfish.tyrus.core.frame.TyrusFrame;
 import org.glassfish.tyrus.core.l10n.LocalizationMessages;
+import org.glassfish.tyrus.core.monitoring.MessageEventListener;
 import org.glassfish.tyrus.spi.CompletionHandler;
 import org.glassfish.tyrus.spi.UpgradeRequest;
 import org.glassfish.tyrus.spi.UpgradeResponse;
@@ -93,6 +94,8 @@ public final class ProtocolHandler {
     private ExtendedExtension.ExtensionContext extensionContext;
     private ByteBuffer remainder = null;
     private boolean hasExtensions = false;
+
+    private volatile MessageEventListener messageEventListener = MessageEventListener.NO_OP;
 
     ProtocolHandler(boolean maskData) {
         this.maskData = maskData;
@@ -276,6 +279,7 @@ public final class ProtocolHandler {
 
         final ByteBuffer byteBuffer = frame(frame);
         localWriter.write(byteBuffer, new CompletionHandlerWrapper(completionHandler, future, frame));
+        messageEventListener.onMessageSent(frame);
 
         return future;
     }
@@ -657,5 +661,9 @@ public final class ProtocolHandler {
             finalFragment = false;
             controlFrame = false;
         }
+    }
+
+    void setMessageEventListener(MessageEventListener messageEventListener) {
+        this.messageEventListener = messageEventListener;
     }
 }

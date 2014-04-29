@@ -39,44 +39,43 @@
  */
 package org.glassfish.tyrus.ext.monitoring.jmx;
 
-import java.util.List;
-
 import org.glassfish.tyrus.core.Beta;
 
 /**
- * MXBean used for accessing monitored application properties - registered endpoints, number of currently open sessions,
- * maximal number of open sessions since the start of the monitoring and message statistics.
+ * MXBean used for accessing monitored endpoint properties - endpoint path and class name, number of currently open sessions,
+ * maximal number of open sessions since the start of monitoring, and message statistics.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  * @see org.glassfish.tyrus.ext.monitoring.jmx.MessagesStatisticsMXBean
  */
 @Beta
-public interface ApplicationMXBean extends MessagesStatisticsMXBean {
-    /**
-     * Exposes endpoint paths and class names for currently registered endpoints.
-     *
-     * @return endpoint paths and class names for currently registered endpoints.
-     */
-    public List<MonitoredEndpointProperties> getEndpoints();
+public interface EndpointMXBean extends MessagesStatisticsMXBean {
 
     /**
-     * Exposes endpoint paths for currently registered endpoints.
+     * Returns the path the endpoint is registered on.
      *
-     * @return paths of registered endpoints.
+     * @return path of the endpoint.
      */
-    public List<String> getEndpointPaths();
+    public String getEndpointPath();
 
     /**
-     * Returns number of currently open sessions.
+     * Returns the class name of the endpoint.
      *
-     * @return number of currently open sessions.
+     * @return the class name of the endpoint.
+     */
+    public String getEndpointClassName();
+
+    /**
+     * Returns the number of session currently open on the endpoint.
+     *
+     * @return the number of session currently open on the endpoint.
      */
     public int getOpenSessionsCount();
 
     /**
-     * Returns the maximal number of open sessions since the start of monitoring.
+     * Returns the maximal number of open sessions on the endpoint since the start of monitoring.
      *
-     * @return maximal number of open sessions since the start of monitoring.
+     * @return the maximal number of open sessions on the endpoint since the start of monitoring.
      */
     public int getMaxOpenSessionsCount();
 

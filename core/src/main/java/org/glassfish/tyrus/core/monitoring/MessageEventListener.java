@@ -37,47 +37,48 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package org.glassfish.tyrus.ext.monitoring.jmx;
-
-import java.util.List;
+package org.glassfish.tyrus.core.monitoring;
 
 import org.glassfish.tyrus.core.Beta;
+import org.glassfish.tyrus.core.frame.Frame;
 
 /**
- * MXBean used for accessing monitored application properties - registered endpoints, number of currently open sessions,
- * maximal number of open sessions since the start of the monitoring and message statistics.
+ * Listens for message-level events that are interesting for monitoring.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
- * @see org.glassfish.tyrus.ext.monitoring.jmx.MessagesStatisticsMXBean
  */
 @Beta
-public interface ApplicationMXBean extends MessagesStatisticsMXBean {
-    /**
-     * Exposes endpoint paths and class names for currently registered endpoints.
-     *
-     * @return endpoint paths and class names for currently registered endpoints.
-     */
-    public List<MonitoredEndpointProperties> getEndpoints();
+public interface MessageEventListener {
 
     /**
-     * Exposes endpoint paths for currently registered endpoints.
+     * Called when a message has been sent.
      *
-     * @return paths of registered endpoints.
+     * @param frame frame of the sent message.
      */
-    public List<String> getEndpointPaths();
+    //todo
+    void onMessageSent(Frame frame);
 
     /**
-     * Returns number of currently open sessions.
+     * Called when a message has been received.
      *
-     * @return number of currently open sessions.
+     * @param frame frame of the received message.
      */
-    public int getOpenSessionsCount();
+    //todo
+    void onMessageReceived(Frame frame);
 
     /**
-     * Returns the maximal number of open sessions since the start of monitoring.
-     *
-     * @return maximal number of open sessions since the start of monitoring.
+     * An instance of @MessageEventListener that does not do anything.
      */
-    public int getMaxOpenSessionsCount();
+    public static final MessageEventListener NO_OP = new MessageEventListener(){
 
+        @Override
+        public void onMessageSent(Frame frame) {
+            //do nothing
+        }
+
+        @Override
+        public void onMessageReceived(Frame frame) {
+            //do nothing
+        }
+    };
 }

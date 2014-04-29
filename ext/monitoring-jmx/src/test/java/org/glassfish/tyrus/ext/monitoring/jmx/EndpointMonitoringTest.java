@@ -62,13 +62,12 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * Tests that MXBeans exposing information about registered endpoints
- * get registered and contain information about deployed endpoint classes
- * and paths.
+ * Tests that MXBeans exposing information about registered endpoints get registered and contain information about
+ * deployed endpoint classes and paths.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
-public class MonitoringJmxTest extends TestContainer {
+public class EndpointMonitoringTest extends TestContainer {
 
     @ServerEndpoint("/jmxServerEndpoint1")
     public static class AnnotatedServerEndpoint1 {
@@ -99,24 +98,24 @@ public class MonitoringJmxTest extends TestContainer {
             server2.start();
 
             // test all endpoints are registered
-            assertTrue(isEndpointRegistered("/jmxTestApp", new MonitoredEndpointProperties(AnnotatedServerEndpoint1.class.getName(), "/jmxServerEndpoint1")));
-            assertTrue(isEndpointRegistered("/jmxTestApp", new MonitoredEndpointProperties(AnnotatedServerEndpoint2.class.getName(), "/jmxServerEndpoint2")));
-            assertTrue(isEndpointRegistered("/jmxTestApp2", new MonitoredEndpointProperties(AnnotatedServerEndpoint2.class.getName(), "/jmxServerEndpoint2")));
-            assertTrue(isEndpointRegistered("/jmxTestApp2", new MonitoredEndpointProperties(AnnotatedServerEndpoint3.class.getName(), "/jmxServerEndpoint3")));
+            assertTrue(isEndpointRegistered("/jmxTestApp", new MonitoredEndpointProperties("/jmxServerEndpoint1", AnnotatedServerEndpoint1.class.getName())));
+            assertTrue(isEndpointRegistered("/jmxTestApp", new MonitoredEndpointProperties("/jmxServerEndpoint2", AnnotatedServerEndpoint2.class.getName())));
+            assertTrue(isEndpointRegistered("/jmxTestApp2", new MonitoredEndpointProperties("/jmxServerEndpoint2", AnnotatedServerEndpoint2.class.getName())));
+            assertTrue(isEndpointRegistered("/jmxTestApp2", new MonitoredEndpointProperties("/jmxServerEndpoint3", AnnotatedServerEndpoint3.class.getName())));
 
             // test endpoint gets unregistered
             application1EventListener.onEndpointUnregistered("/jmxServerEndpoint2");
-            assertTrue(isEndpointRegistered("/jmxTestApp", new MonitoredEndpointProperties(AnnotatedServerEndpoint1.class.getName(), "/jmxServerEndpoint1")));
-            assertFalse(isEndpointRegistered("/jmxTestApp", new MonitoredEndpointProperties(AnnotatedServerEndpoint2.class.getName(), "/jmxServerEndpoint2")));
-            assertTrue(isEndpointRegistered("/jmxTestApp2", new MonitoredEndpointProperties(AnnotatedServerEndpoint2.class.getName(), "/jmxServerEndpoint2")));
-            assertTrue(isEndpointRegistered("/jmxTestApp2", new MonitoredEndpointProperties(AnnotatedServerEndpoint3.class.getName(), "/jmxServerEndpoint3")));
+            assertTrue(isEndpointRegistered("/jmxTestApp", new MonitoredEndpointProperties("/jmxServerEndpoint1", AnnotatedServerEndpoint1.class.getName())));
+            assertFalse(isEndpointRegistered("/jmxTestApp", new MonitoredEndpointProperties("/jmxServerEndpoint2", AnnotatedServerEndpoint2.class.getName())));
+            assertTrue(isEndpointRegistered("/jmxTestApp2", new MonitoredEndpointProperties("/jmxServerEndpoint2", AnnotatedServerEndpoint2.class.getName())));
+            assertTrue(isEndpointRegistered("/jmxTestApp2", new MonitoredEndpointProperties("/jmxServerEndpoint3", AnnotatedServerEndpoint3.class.getName())));
 
             // test jmx of one applications is terminated
             server2.stop();
-            assertTrue(isEndpointRegistered("/jmxTestApp", new MonitoredEndpointProperties(AnnotatedServerEndpoint1.class.getName(), "/jmxServerEndpoint1")));
-            assertFalse(isEndpointRegistered("/jmxTestApp", new MonitoredEndpointProperties(AnnotatedServerEndpoint2.class.getName(), "/jmxServerEndpoint2")));
-            assertFalse(isEndpointRegistered("/jmxTestApp2", new MonitoredEndpointProperties(AnnotatedServerEndpoint2.class.getName(), "/jmxServerEndpoint2")));
-            assertFalse(isEndpointRegistered("/jmxTestApp2", new MonitoredEndpointProperties(AnnotatedServerEndpoint3.class.getName(), "/jmxServerEndpoint3")));
+            assertTrue(isEndpointRegistered("/jmxTestApp", new MonitoredEndpointProperties("/jmxServerEndpoint1", AnnotatedServerEndpoint1.class.getName())));
+            assertFalse(isEndpointRegistered("/jmxTestApp", new MonitoredEndpointProperties("/jmxServerEndpoint2", AnnotatedServerEndpoint2.class.getName())));
+            assertFalse(isEndpointRegistered("/jmxTestApp2", new MonitoredEndpointProperties("/jmxServerEndpoint2", AnnotatedServerEndpoint2.class.getName())));
+            assertFalse(isEndpointRegistered("/jmxTestApp2", new MonitoredEndpointProperties("/jmxServerEndpoint3", AnnotatedServerEndpoint3.class.getName())));
 
         } catch (DeploymentException e) {
             e.printStackTrace();
