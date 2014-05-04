@@ -37,45 +37,51 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package org.glassfish.tyrus.core.monitoring;
+package org.glassfish.tyrus.ext.monitoring.jmx;
 
-import org.glassfish.tyrus.core.Beta;
 
 /**
- * Listens to endpoint-level events that are interesting for monitoring.
+ * Creates total message statistics by aggregating statistics about text, binary and control messages.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
-@Beta
-public interface EndpointEventListener {
+class AggregatedMessageStatistics implements MessageStatisticsSource {
 
-    /**
-     * Called when a session has been opened.
-     *
-     * @param sessionId an ID of the newly opened session.
-     * @return listener that listens for message-level events.
-     */
-    MessageEventListener onSessionOpened(String sessionId);
+    private final MessageStatisticsSource textMessageStatistics;
+    private final MessageStatisticsSource binaryMessageStatistics;
+    private final MessageStatisticsSource controlMessageStatistics;
 
-    /**
-     * Called when a session has been closed.
-     *
-     * @param sessionId an ID of the closed session.
-     */
-    void onSessionClosed(String sessionId);
+    AggregatedMessageStatistics(MessageStatisticsSource textMessageStatistics,
+                                MessageStatisticsSource binaryMessageStatistics,
+                                MessageStatisticsSource controlMessageStatistics) {
+        this.textMessageStatistics = textMessageStatistics;
+        this.binaryMessageStatistics = binaryMessageStatistics;
+        this.controlMessageStatistics = controlMessageStatistics;
+    }
 
-    /**
-     * An instance of @EndpointEventListener that does not do anything.
-     */
-    public static final EndpointEventListener NO_OP = new EndpointEventListener() {
-        @Override
-        public MessageEventListener onSessionOpened(String sessionId) {
-            return MessageEventListener.NO_OP;
-        }
+    @Override
+    public long getMessagesCount() {
+        return textMessageStatistics.getMessagesCount()
+                + binaryMessageStatistics.getMessagesCount()
+                + controlMessageStatistics.getMessagesCount();
+    }
 
-        @Override
-        public void onSessionClosed(String sessionId) {
-            // do nothing
-        }
-    };
+    @Override
+    public long getMessagesSize() {
+        return textMessageStatistics.getMessagesSize()
+                + binaryMessageStatistics.getMessagesSize()
+                + controlMessageStatistics.getMessagesSize();
+    }
+
+    @Override
+    public long getMinimalMessageSize() {
+        return Math.min(textMessageStatistics.getMinimalMessageSize(),
+                Math.min(binaryMessageStatistics.getMinimalMessageSize(), controlMessageStatistics.getMinimalMessageSize()));
+    }
+
+    @Override
+    public long getMaximalMessageSize() {
+        return Math.max(textMessageStatistics.getMaximalMessageSize(),
+                Math.max(binaryMessageStatistics.getMaximalMessageSize(), controlMessageStatistics.getMaximalMessageSize()));
+    }
 }

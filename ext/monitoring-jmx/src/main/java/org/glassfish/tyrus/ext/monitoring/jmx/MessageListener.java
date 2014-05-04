@@ -37,45 +37,25 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package org.glassfish.tyrus.core.monitoring;
-
-import org.glassfish.tyrus.core.Beta;
+package org.glassfish.tyrus.ext.monitoring.jmx;
 
 /**
- * Listens to endpoint-level events that are interesting for monitoring.
+ * Listener of application-level events like {@link org.glassfish.tyrus.core.monitoring.MessageEventListener},
+ * with a difference that it distinguishes between message types and if they are sent or received.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
-@Beta
-public interface EndpointEventListener {
+interface MessageListener {
 
-    /**
-     * Called when a session has been opened.
-     *
-     * @param sessionId an ID of the newly opened session.
-     * @return listener that listens for message-level events.
-     */
-    MessageEventListener onSessionOpened(String sessionId);
+    void onTextMessageSent(long length);
 
-    /**
-     * Called when a session has been closed.
-     *
-     * @param sessionId an ID of the closed session.
-     */
-    void onSessionClosed(String sessionId);
+    void onBinaryMessageSent(long length);
 
-    /**
-     * An instance of @EndpointEventListener that does not do anything.
-     */
-    public static final EndpointEventListener NO_OP = new EndpointEventListener() {
-        @Override
-        public MessageEventListener onSessionOpened(String sessionId) {
-            return MessageEventListener.NO_OP;
-        }
+    void onControlMessageSent(long length);
 
-        @Override
-        public void onSessionClosed(String sessionId) {
-            // do nothing
-        }
-    };
+    void onTextMessageReceived(long length);
+
+    void onBinaryMessageReceived(long length);
+
+    void onControlMessageReceived(long length);
 }

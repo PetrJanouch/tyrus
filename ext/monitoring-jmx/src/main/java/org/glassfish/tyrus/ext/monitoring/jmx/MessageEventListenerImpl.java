@@ -37,45 +37,47 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package org.glassfish.tyrus.core.monitoring;
+package org.glassfish.tyrus.ext.monitoring.jmx;
 
-import org.glassfish.tyrus.core.Beta;
+import org.glassfish.tyrus.core.frame.TyrusFrame;
+import org.glassfish.tyrus.core.monitoring.MessageEventListener;
 
 /**
- * Listens to endpoint-level events that are interesting for monitoring.
+ * Determines the type of a received or sent frame.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
-@Beta
-public interface EndpointEventListener {
+class MessageEventListenerImpl implements MessageEventListener {
 
-    /**
-     * Called when a session has been opened.
-     *
-     * @param sessionId an ID of the newly opened session.
-     * @return listener that listens for message-level events.
-     */
-    MessageEventListener onSessionOpened(String sessionId);
+    private final MessageListener messageListener;
 
-    /**
-     * Called when a session has been closed.
-     *
-     * @param sessionId an ID of the closed session.
-     */
-    void onSessionClosed(String sessionId);
+    MessageEventListenerImpl(MessageListener messageListener) {
+        this.messageListener = messageListener;
+    }
 
-    /**
-     * An instance of @EndpointEventListener that does not do anything.
-     */
-    public static final EndpointEventListener NO_OP = new EndpointEventListener() {
-        @Override
-        public MessageEventListener onSessionOpened(String sessionId) {
-            return MessageEventListener.NO_OP;
+    @Override
+    public void onFrameSent(TyrusFrame.FrameType frameType, long payloadLength) {
+        if (frameType == TyrusFrame.FrameType.TEXT || frameType == TyrusFrame.FrameType.TEXT_CONTINUATION) {
+            messageListener.onTextMessageSent(payloadLength);
         }
-
-        @Override
-        public void onSessionClosed(String sessionId) {
-            // do nothing
+        if (frameType == TyrusFrame.FrameType.BINARY || frameType == TyrusFrame.FrameType.BINARY_CONTINUATION) {
+            messageListener.onBinaryMessageSent(payloadLength);
         }
-    };
+        if (frameType == TyrusFrame.FrameType.PING || frameType == TyrusFrame.FrameType.PONG) {
+            messageListener.onControlMessageSent(payloadLength);
+        }
+    }
+
+    @Override
+    public void onFrameReceived(TyrusFrame.FrameType frameType, long payloadLength) {
+        if (frameType == TyrusFrame.FrameType.TEXT || frameType == TyrusFrame.FrameType.TEXT_CONTINUATION) {
+            messageListener.onTextMessageReceived(payloadLength);
+        }
+        if (frameType == TyrusFrame.FrameType.BINARY || frameType == TyrusFrame.FrameType.BINARY_CONTINUATION) {
+            messageListener.onBinaryMessageReceived(payloadLength);
+        }
+        if (frameType == TyrusFrame.FrameType.PING || frameType == TyrusFrame.FrameType.PONG) {
+            messageListener.onControlMessageReceived(payloadLength);
+        }
+    }
 }

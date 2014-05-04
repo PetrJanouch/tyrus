@@ -55,8 +55,17 @@ import org.glassfish.tyrus.core.TyrusWebSocket;
  */
 public abstract class TyrusFrame extends Frame {
 
-    protected TyrusFrame(Frame frame) {
+    private FrameType frameType;
+
+    /**
+     * Constructor.
+     *
+     * @param frame     enriched frame.
+     * @param frameType type of the frame.
+     */
+    protected TyrusFrame(Frame frame, FrameType frameType) {
         super(frame);
+        this.frameType = frameType;
     }
 
     /**
@@ -65,6 +74,17 @@ public abstract class TyrusFrame extends Frame {
      * @param socket socket on which the appropriate action will be performed.
      */
     public abstract void respond(TyrusWebSocket socket);
+
+    /**
+     * Returns the type of the frame. It is used for distinguishing frame types in monitoring.
+     *
+     * TODO: consider moving this to "MonitoredFrame" or something like this;
+     *
+     * @return type of the frame.
+     */
+    public FrameType getFrameType() {
+        return frameType;
+    }
 
     /**
      * {@link TyrusFrame} factory method.
@@ -98,4 +118,39 @@ public abstract class TyrusFrame extends Frame {
                         Integer.toHexString(frame.getOpcode()).toUpperCase(Locale.US)));
         }
     }
+
+    /**
+     * An Enumeration of frame types.
+     */
+    static public enum FrameType {
+        /**
+         * A text frame.
+         */
+        TEXT,
+        /**
+         * A continuation text frame.
+         */
+        TEXT_CONTINUATION,
+        /**
+         * A binary frame.
+         */
+        BINARY,
+        /**
+         * A continuation binary frame.
+         */
+        BINARY_CONTINUATION,
+        /**
+         * A ping frame.
+         */
+        PING,
+        /**
+         * A pong frame.
+         */
+        PONG,
+        /**
+         * A close frame.
+         */
+        CLOSE
+    }
+
 }

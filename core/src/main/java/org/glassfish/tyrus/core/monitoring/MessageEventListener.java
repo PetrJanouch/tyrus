@@ -40,42 +40,46 @@
 package org.glassfish.tyrus.core.monitoring;
 
 import org.glassfish.tyrus.core.Beta;
+import org.glassfish.tyrus.core.frame.TyrusFrame;
 
 /**
- * Listens to endpoint-level events that are interesting for monitoring.
+ * Listens for message-level events that are interesting for monitoring.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
 @Beta
-public interface EndpointEventListener {
+public interface MessageEventListener {
 
     /**
-     * Called when a session has been opened.
+     * Called when a frame has been sent.
      *
-     * @param sessionId an ID of the newly opened session.
-     * @return listener that listens for message-level events.
+     * @param frameType     type of the frame.
+     * @param payloadLength length of the frame payload.
      */
-    MessageEventListener onSessionOpened(String sessionId);
+    void onFrameSent(TyrusFrame.FrameType frameType, long payloadLength);
 
     /**
-     * Called when a session has been closed.
+     * Called when a frame has been received.
      *
-     * @param sessionId an ID of the closed session.
+     * @param frameType     type of the frame.
+     * @param payloadLength length of the frame payload.
      */
-    void onSessionClosed(String sessionId);
+    void onFrameReceived(TyrusFrame.FrameType frameType, long payloadLength);
 
     /**
-     * An instance of @EndpointEventListener that does not do anything.
+     * An instance of @MessageEventListener that does not do anything.
      */
-    public static final EndpointEventListener NO_OP = new EndpointEventListener() {
+    public static final MessageEventListener NO_OP = new MessageEventListener() {
+
+
         @Override
-        public MessageEventListener onSessionOpened(String sessionId) {
-            return MessageEventListener.NO_OP;
+        public void onFrameSent(TyrusFrame.FrameType frameType, long payloadLength) {
+            //do nothing
         }
 
         @Override
-        public void onSessionClosed(String sessionId) {
-            // do nothing
+        public void onFrameReceived(TyrusFrame.FrameType frameType, long payloadLength) {
+            //do nothing
         }
     };
 }

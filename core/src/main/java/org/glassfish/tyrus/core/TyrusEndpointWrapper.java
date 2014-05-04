@@ -94,6 +94,7 @@ import org.glassfish.tyrus.core.frame.BinaryFrame;
 import org.glassfish.tyrus.core.frame.Frame;
 import org.glassfish.tyrus.core.frame.TextFrame;
 import org.glassfish.tyrus.core.l10n.LocalizationMessages;
+import org.glassfish.tyrus.core.monitoring.EndpointEventListener;
 import org.glassfish.tyrus.spi.UpgradeRequest;
 import org.glassfish.tyrus.spi.UpgradeResponse;
 
@@ -134,6 +135,7 @@ public class TyrusEndpointWrapper {
 
     private final ClusterContext clusterContext;
     private final Session dummySession;
+    private volatile EndpointEventListener endpointEventListener = EndpointEventListener.NO_OP;
 
     /**
      * Create {@link TyrusEndpointWrapper} for class that extends {@link Endpoint}.
@@ -532,6 +534,7 @@ public class TyrusEndpointWrapper {
         final TyrusSession session = new TyrusSession(container, socket, this, subprotocol, extensions, false,
                 getURI(contextPath, null), null, Collections.<String, String>emptyMap(), null, Collections.<String, List<String>>emptyMap(), null, null);
         webSocketToSession.put(socket, session);
+        socket.setMessageEventListener(endpointEventListener.onSessionOpened(session.getId()));
         return session;
     }
 
@@ -563,6 +566,7 @@ public class TyrusEndpointWrapper {
                     upgradeRequest.getQueryString(), templateValues, upgradeRequest.getUserPrincipal(),
                     upgradeRequest.getParameterMap(), clusterContext, connectionId);
             webSocketToSession.put(socket, session);
+            socket.setMessageEventListener(endpointEventListener.onSessionOpened(session.getId()));
         }
 
         ErrorCollector collector = new ErrorCollector();
@@ -1038,6 +1042,7 @@ public class TyrusEndpointWrapper {
             }
 
             webSocketToSession.remove(socket);
+            endpointEventListener.onSessionClosed(session.getId());
             componentProvider.removeSession(session);
 
             if (onCloseListener != null) {
@@ -1316,5 +1321,9 @@ public class TyrusEndpointWrapper {
          * @param closeReason close reason.
          */
         void onClose(CloseReason closeReason);
+    }
+
+    public void setEndpointEventListener(EndpointEventListener endpointEventListener) {
+        this.endpointEventListener = endpointEventListener;
     }
 }

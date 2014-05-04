@@ -37,45 +37,46 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package org.glassfish.tyrus.core.monitoring;
+package org.glassfish.tyrus.ext.monitoring.jmx;
 
 import org.glassfish.tyrus.core.Beta;
 
 /**
- * Listens to endpoint-level events that are interesting for monitoring.
+ * MXBean used for accessing monitored endpoint properties - endpoint path and class name, number of currently open sessions,
+ * maximal number of open sessions since the start of monitoring, and message statistics.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
+ * @see MessageStatisticsMXBean
  */
 @Beta
-public interface EndpointEventListener {
+public interface EndpointMXBean extends MessageStatisticsMXBean {
 
     /**
-     * Called when a session has been opened.
+     * Returns the path the endpoint is registered on.
      *
-     * @param sessionId an ID of the newly opened session.
-     * @return listener that listens for message-level events.
+     * @return path of the endpoint.
      */
-    MessageEventListener onSessionOpened(String sessionId);
+    public String getEndpointPath();
 
     /**
-     * Called when a session has been closed.
+     * Returns the class name of the endpoint.
      *
-     * @param sessionId an ID of the closed session.
+     * @return the class name of the endpoint.
      */
-    void onSessionClosed(String sessionId);
+    public String getEndpointClassName();
 
     /**
-     * An instance of @EndpointEventListener that does not do anything.
+     * Returns the number of sessions currently open on the endpoint.
+     *
+     * @return the number of sessions currently open on the endpoint.
      */
-    public static final EndpointEventListener NO_OP = new EndpointEventListener() {
-        @Override
-        public MessageEventListener onSessionOpened(String sessionId) {
-            return MessageEventListener.NO_OP;
-        }
+    public int getOpenSessionsCount();
 
-        @Override
-        public void onSessionClosed(String sessionId) {
-            // do nothing
-        }
-    };
+    /**
+     * Returns the maximal number of open sessions on the endpoint since the start of monitoring.
+     *
+     * @return the maximal number of open sessions on the endpoint since the start of monitoring.
+     */
+    public int getMaximalOpenSessionsCount();
+
 }

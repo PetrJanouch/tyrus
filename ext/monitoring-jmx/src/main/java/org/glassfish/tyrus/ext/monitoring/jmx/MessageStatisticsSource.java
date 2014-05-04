@@ -37,45 +37,20 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package org.glassfish.tyrus.core.monitoring;
-
-import org.glassfish.tyrus.core.Beta;
+package org.glassfish.tyrus.ext.monitoring.jmx;
 
 /**
- * Listens to endpoint-level events that are interesting for monitoring.
+ * A generic representation of collected message statistics which is passed to MXBeans exposing these statistics.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
-@Beta
-public interface EndpointEventListener {
+interface MessageStatisticsSource {
 
-    /**
-     * Called when a session has been opened.
-     *
-     * @param sessionId an ID of the newly opened session.
-     * @return listener that listens for message-level events.
-     */
-    MessageEventListener onSessionOpened(String sessionId);
+    long getMessagesCount();
 
-    /**
-     * Called when a session has been closed.
-     *
-     * @param sessionId an ID of the closed session.
-     */
-    void onSessionClosed(String sessionId);
+    long getMessagesSize();
 
-    /**
-     * An instance of @EndpointEventListener that does not do anything.
-     */
-    public static final EndpointEventListener NO_OP = new EndpointEventListener() {
-        @Override
-        public MessageEventListener onSessionOpened(String sessionId) {
-            return MessageEventListener.NO_OP;
-        }
+    long getMinimalMessageSize();
 
-        @Override
-        public void onSessionClosed(String sessionId) {
-            // do nothing
-        }
-    };
+    long getMaximalMessageSize();
 }

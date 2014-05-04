@@ -60,6 +60,7 @@ import org.glassfish.tyrus.core.frame.Frame;
 import org.glassfish.tyrus.core.frame.TextFrame;
 import org.glassfish.tyrus.core.frame.TyrusFrame;
 import org.glassfish.tyrus.core.l10n.LocalizationMessages;
+import org.glassfish.tyrus.core.monitoring.MessageEventListener;
 import org.glassfish.tyrus.spi.CompletionHandler;
 import org.glassfish.tyrus.spi.UpgradeRequest;
 import org.glassfish.tyrus.spi.UpgradeResponse;
@@ -93,6 +94,8 @@ public final class ProtocolHandler {
     private ExtendedExtension.ExtensionContext extensionContext;
     private ByteBuffer remainder = null;
     private boolean hasExtensions = false;
+
+    private volatile MessageEventListener messageEventListener = MessageEventListener.NO_OP;
 
     ProtocolHandler(boolean maskData) {
         this.maskData = maskData;
@@ -166,15 +169,15 @@ public final class ProtocolHandler {
         this.hasExtensions = extensions != null && extensions.size() > 0;
     }
 
-    public final Future<Frame> send(Frame frame, boolean useTimeout) {
+    public final Future<Frame> send(TyrusFrame frame, boolean useTimeout) {
         return send(frame, null, useTimeout);
     }
 
-    public final Future<Frame> send(Frame frame) {
+    public final Future<Frame> send(TyrusFrame frame) {
         return send(frame, null, true);
     }
 
-    Future<Frame> send(Frame frame,
+    Future<Frame> send(TyrusFrame frame,
                        CompletionHandler<Frame> completionHandler, Boolean useTimeout) {
         return write(frame, completionHandler, useTimeout);
     }
@@ -266,7 +269,7 @@ public final class ProtocolHandler {
         return send;
     }
 
-    private Future<Frame> write(final Frame frame, final CompletionHandler<Frame> completionHandler, boolean useTimeout) {
+    private Future<Frame> write(final TyrusFrame frame, final CompletionHandler<Frame> completionHandler, boolean useTimeout) {
         final Writer localWriter = writer;
         final TyrusFuture<Frame> future = new TyrusFuture<Frame>();
 
@@ -276,6 +279,7 @@ public final class ProtocolHandler {
 
         final ByteBuffer byteBuffer = frame(frame);
         localWriter.write(byteBuffer, new CompletionHandlerWrapper(completionHandler, future, frame));
+        messageEventListener.onFrameSent(frame.getFrameType(), frame.getPayloadLength());
 
         return future;
     }
@@ -657,5 +661,9 @@ public final class ProtocolHandler {
             finalFragment = false;
             controlFrame = false;
         }
+    }
+
+    void setMessageEventListener(MessageEventListener messageEventListener) {
+        this.messageEventListener = messageEventListener;
     }
 }

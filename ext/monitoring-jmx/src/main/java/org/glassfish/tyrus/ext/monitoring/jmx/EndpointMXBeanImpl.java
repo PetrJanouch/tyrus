@@ -39,41 +39,41 @@
  */
 package org.glassfish.tyrus.ext.monitoring.jmx;
 
-
-import java.beans.ConstructorProperties;
-
 /**
- * Properties of an endpoint exposed by JMX.
- *
  * @author Petr Janouch (petr.janouch at oracle.com)
- * @see {@link org.glassfish.tyrus.core.monitoring.ApplicationEventListener}.
  */
-public class MonitoredEndpointProperties {
+class EndpointMXBeanImpl extends MessageStatisticsMXBeanImpl implements EndpointMXBean {
 
-    private final String endpointClassName;
     private final String endpointPath;
+    private final String endpointClassName;
+    private final Callable<Integer> openSessionsCount;
+    private final Callable<Integer> maxOpenSessionsCount;
 
-    /**
-     * @param endpointClassName class name of an endpoint.
-     * @param endpointPath      the URL the endpoint is registered on.
-     */
-    @ConstructorProperties({"endpointClassName", "endpointPath"})
-    public MonitoredEndpointProperties(String endpointClassName, String endpointPath) {
-        this.endpointClassName = endpointClassName;
+    public EndpointMXBeanImpl(MessageStatisticsSource sentMessageStatistics, MessageStatisticsSource receivedMessageStatistics, String endpointPath, String endpointClassName, Callable<Integer> openSessionsCount, Callable<Integer> maxOpenSessionsCount) {
+        super(sentMessageStatistics, receivedMessageStatistics);
         this.endpointPath = endpointPath;
+        this.endpointClassName = endpointClassName;
+        this.openSessionsCount = openSessionsCount;
+        this.maxOpenSessionsCount = maxOpenSessionsCount;
     }
 
-    /**
-     * @return class name of the endpoint.
-     */
+    @Override
+    public String getEndpointPath() {
+        return endpointPath;
+    }
+
+    @Override
     public String getEndpointClassName() {
         return endpointClassName;
     }
 
-    /**
-     * @return the URI the endpoint is registered on.
-     */
-    public String getEndpointPath() {
-        return endpointPath;
+    @Override
+    public int getOpenSessionsCount() {
+        return openSessionsCount.call();
+    }
+
+    @Override
+    public int getMaximalOpenSessionsCount() {
+        return maxOpenSessionsCount.call();
     }
 }

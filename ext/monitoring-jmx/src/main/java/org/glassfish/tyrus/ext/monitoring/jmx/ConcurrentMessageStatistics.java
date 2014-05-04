@@ -37,45 +37,62 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package org.glassfish.tyrus.core.monitoring;
-
-import org.glassfish.tyrus.core.Beta;
+package org.glassfish.tyrus.ext.monitoring.jmx;
 
 /**
- * Listens to endpoint-level events that are interesting for monitoring.
+ * An implementation of @MessageStatisticsSource that allows concurrent updates by many threads.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
-@Beta
-public interface EndpointEventListener {
+class ConcurrentMessageStatistics implements MessageStatisticsSource {
 
-    /**
-     * Called when a session has been opened.
-     *
-     * @param sessionId an ID of the newly opened session.
-     * @return listener that listens for message-level events.
-     */
-    MessageEventListener onSessionOpened(String sessionId);
+    private final LongAdder messagesCount = new LongAdder();
+    private final LongAdder messagesSize = new LongAdder();
+    private final Object minimalMessageSizeLock = new Object();
+    private final Object maximalMessageSizeLock = new Object();
 
-    /**
-     * Called when a session has been closed.
-     *
-     * @param sessionId an ID of the closed session.
-     */
-    void onSessionClosed(String sessionId);
+    private volatile long minimalMessageSize = Long.MAX_VALUE;
+    private volatile long maximalMessageSize = 0;
 
-    /**
-     * An instance of @EndpointEventListener that does not do anything.
-     */
-    public static final EndpointEventListener NO_OP = new EndpointEventListener() {
-        @Override
-        public MessageEventListener onSessionOpened(String sessionId) {
-            return MessageEventListener.NO_OP;
+    void onMessage(long size) {
+        messagesCount.increment();
+        messagesSize.add(size);
+        if (minimalMessageSize > size) {
+            synchronized (minimalMessageSizeLock) {
+                if (minimalMessageSize > size) {
+                    minimalMessageSize = size;
+                }
+            }
         }
-
-        @Override
-        public void onSessionClosed(String sessionId) {
-            // do nothing
+        if (maximalMessageSize < size) {
+            synchronized (maximalMessageSizeLock) {
+                if (maximalMessageSize < size) {
+                    maximalMessageSize = size;
+                }
+            }
         }
-    };
+    }
+
+    @Override
+    public long getMessagesCount() {
+        return messagesCount.longValue();
+    }
+
+    @Override
+    public long getMessagesSize() {
+        return messagesSize.longValue();
+    }
+
+    @Override
+    public long getMinimalMessageSize() {
+        if (minimalMessageSize == Long.MAX_VALUE) {
+            return 0;
+        }
+        return minimalMessageSize;
+    }
+
+    @Override
+    public long getMaximalMessageSize() {
+        return maximalMessageSize;
+    }
 }

@@ -37,45 +37,59 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package org.glassfish.tyrus.core.monitoring;
+package org.glassfish.tyrus.ext.monitoring.jmx;
 
-import org.glassfish.tyrus.core.Beta;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.glassfish.tyrus.core.monitoring.MessageEventListener;
 
 /**
- * Listens to endpoint-level events that are interesting for monitoring.
+ * This @EndpointJmx implementation creates and holds {@link org.glassfish.tyrus.ext.monitoring.jmx.SessionJmx},
+ * which collects message statistics for open sessions.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
-@Beta
-public interface EndpointEventListener {
+public class SessionAwareEndpointJmx extends EndpointJmx {
 
-    /**
-     * Called when a session has been opened.
-     *
-     * @param sessionId an ID of the newly opened session.
-     * @return listener that listens for message-level events.
-     */
-    MessageEventListener onSessionOpened(String sessionId);
+    private final Map<String, SessionJmx> sessions = new ConcurrentHashMap<String, SessionJmx>();
 
-    /**
-     * Called when a session has been closed.
-     *
-     * @param sessionId an ID of the closed session.
-     */
-    void onSessionClosed(String sessionId);
+    SessionAwareEndpointJmx(ApplicationJmx applicationJmx, String applicationName, String endpointPath, String endpointClassName) {
+        super(applicationJmx, applicationName, endpointPath, endpointClassName);
+    }
 
-    /**
-     * An instance of @EndpointEventListener that does not do anything.
-     */
-    public static final EndpointEventListener NO_OP = new EndpointEventListener() {
-        @Override
-        public MessageEventListener onSessionOpened(String sessionId) {
-            return MessageEventListener.NO_OP;
+    @Override
+    public MessageEventListener onSessionOpened(String sessionId) {
+        SessionJmx sessionJmx = new SessionJmx(applicationName, endpointClassNamePathPair.getEndpointPath(), sessionId, this);
+        sessions.put(sessionId, sessionJmx);
+
+        if (sessions.size() > maxOpenSessionsCount) {
+            synchronized (maxOpenSessionsCountLock) {
+                if (sessions.size() > maxOpenSessionsCount) {
+                    maxOpenSessionsCount = sessions.size();
+                }
+            }
         }
 
-        @Override
-        public void onSessionClosed(String sessionId) {
-            // do nothing
-        }
-    };
+        applicationJmx.onSessionOpened();
+
+        return new MessageEventListenerImpl(sessionJmx);
+    }
+
+    @Override
+    public void onSessionClosed(String sessionId) {
+        SessionJmx session = sessions.remove(sessionId);
+        session.unregister();
+        applicationJmx.onSessionClosed();
+    }
+
+    @Override
+    protected Callable<Integer> getOpenSessionsCount() {
+        return new Callable<Integer>() {
+            @Override
+            public Integer call() {
+                return sessions.size();
+            }
+        };
+    }
 }

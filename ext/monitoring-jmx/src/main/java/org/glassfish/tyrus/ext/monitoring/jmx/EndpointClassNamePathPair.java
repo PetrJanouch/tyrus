@@ -37,45 +37,49 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package org.glassfish.tyrus.core.monitoring;
+package org.glassfish.tyrus.ext.monitoring.jmx;
 
-import org.glassfish.tyrus.core.Beta;
+
+import java.beans.ConstructorProperties;
 
 /**
- * Listens to endpoint-level events that are interesting for monitoring.
+ * Path and class name of an endpoint exposed by JMX.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
+ * @see {@link org.glassfish.tyrus.core.monitoring.ApplicationEventListener}.
  */
-@Beta
-public interface EndpointEventListener {
+public class EndpointClassNamePathPair {
+
+    private final String endpointPath;
+    private final String endpointClassName;
 
     /**
-     * Called when a session has been opened.
+     * Constructor, {@link java.beans.ConstructorProperties} is required, so that MXBean client can create an instance.
      *
-     * @param sessionId an ID of the newly opened session.
-     * @return listener that listens for message-level events.
+     * @param endpointPath      the path the endpoint is registered on.
+     * @param endpointClassName the class name of the endpoint.
      */
-    MessageEventListener onSessionOpened(String sessionId);
+    @ConstructorProperties({"endpointPath", "endpointClassName"})
+    public EndpointClassNamePathPair(String endpointPath, String endpointClassName) {
+        this.endpointPath = endpointPath;
+        this.endpointClassName = endpointClassName;
+    }
 
     /**
-     * Called when a session has been closed.
+     * Returns class name of the endpoint.
      *
-     * @param sessionId an ID of the closed session.
+     * @return class name of the endpoint.
      */
-    void onSessionClosed(String sessionId);
+    public String getEndpointClassName() {
+        return endpointClassName;
+    }
 
     /**
-     * An instance of @EndpointEventListener that does not do anything.
+     * Returns the path the endpoint is registered on.
+     *
+     * @return the path the endpoint is registered on.
      */
-    public static final EndpointEventListener NO_OP = new EndpointEventListener() {
-        @Override
-        public MessageEventListener onSessionOpened(String sessionId) {
-            return MessageEventListener.NO_OP;
-        }
-
-        @Override
-        public void onSessionClosed(String sessionId) {
-            // do nothing
-        }
-    };
+    public String getEndpointPath() {
+        return endpointPath;
+    }
 }

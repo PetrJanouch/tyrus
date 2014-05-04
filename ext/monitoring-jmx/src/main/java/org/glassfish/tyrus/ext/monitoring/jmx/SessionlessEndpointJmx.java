@@ -37,45 +37,47 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package org.glassfish.tyrus.core.monitoring;
+package org.glassfish.tyrus.ext.monitoring.jmx;
 
-import org.glassfish.tyrus.core.Beta;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.glassfish.tyrus.core.monitoring.MessageEventListener;
 
 /**
- * Listens to endpoint-level events that are interesting for monitoring.
+ * This @EndpointJmx implementation represents the lowest level of monitoring hierarchy and does not create and
+ * hold {@link org.glassfish.tyrus.ext.monitoring.jmx.SessionJmx} for opened sessions. It is used when monitoring on
+ * session level is turned off.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
-@Beta
-public interface EndpointEventListener {
+class SessionlessEndpointJmx extends EndpointJmx {
 
-    /**
-     * Called when a session has been opened.
-     *
-     * @param sessionId an ID of the newly opened session.
-     * @return listener that listens for message-level events.
-     */
-    MessageEventListener onSessionOpened(String sessionId);
+    private final AtomicInteger openSessionsCount = new AtomicInteger();
 
-    /**
-     * Called when a session has been closed.
-     *
-     * @param sessionId an ID of the closed session.
-     */
-    void onSessionClosed(String sessionId);
+    SessionlessEndpointJmx(ApplicationJmx applicationJmx, String applicationName, String endpointPath, String endpointClassName) {
+        super(applicationJmx, applicationName, endpointPath, endpointClassName);
+    }
 
-    /**
-     * An instance of @EndpointEventListener that does not do anything.
-     */
-    public static final EndpointEventListener NO_OP = new EndpointEventListener() {
-        @Override
-        public MessageEventListener onSessionOpened(String sessionId) {
-            return MessageEventListener.NO_OP;
-        }
+    @Override
+    protected Callable<Integer> getOpenSessionsCount() {
+        return new Callable<Integer>() {
+            @Override
+            public Integer call() {
+                return openSessionsCount.get();
+            }
+        };
+    }
 
-        @Override
-        public void onSessionClosed(String sessionId) {
-            // do nothing
-        }
-    };
+    @Override
+    public MessageEventListener onSessionOpened(String sessionId) {
+        applicationJmx.onSessionOpened();
+        openSessionsCount.incrementAndGet();
+        return new MessageEventListenerImpl(this);
+    }
+
+    @Override
+    public void onSessionClosed(String sessionId) {
+        applicationJmx.onSessionClosed();
+        openSessionsCount.decrementAndGet();
+    }
 }

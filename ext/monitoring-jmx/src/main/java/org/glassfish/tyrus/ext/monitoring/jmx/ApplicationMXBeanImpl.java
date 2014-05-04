@@ -37,45 +37,45 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package org.glassfish.tyrus.core.monitoring;
+package org.glassfish.tyrus.ext.monitoring.jmx;
 
-import org.glassfish.tyrus.core.Beta;
+import java.util.List;
 
 /**
- * Listens to endpoint-level events that are interesting for monitoring.
- *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
-@Beta
-public interface EndpointEventListener {
+class ApplicationMXBeanImpl extends MessageStatisticsMXBeanImpl implements ApplicationMXBean {
 
-    /**
-     * Called when a session has been opened.
-     *
-     * @param sessionId an ID of the newly opened session.
-     * @return listener that listens for message-level events.
-     */
-    MessageEventListener onSessionOpened(String sessionId);
+    private final Callable<List<EndpointClassNamePathPair>> endpoints;
+    private final Callable<List<String>> endpointPaths;
+    private final Callable<Integer> openSessionsCount;
+    private final Callable<Integer> maxOpenSessionsCount;
 
-    /**
-     * Called when a session has been closed.
-     *
-     * @param sessionId an ID of the closed session.
-     */
-    void onSessionClosed(String sessionId);
+    public ApplicationMXBeanImpl(MessageStatisticsSource sentMessageStatistics, MessageStatisticsSource receivedMessageStatistics, Callable<List<EndpointClassNamePathPair>> endpoints, Callable<List<String>> endpointPaths, Callable<Integer> openSessionsCount, Callable<Integer> maxOpenSessionsCount) {
+        super(sentMessageStatistics, receivedMessageStatistics);
+        this.endpoints = endpoints;
+        this.endpointPaths = endpointPaths;
+        this.openSessionsCount = openSessionsCount;
+        this.maxOpenSessionsCount = maxOpenSessionsCount;
+    }
 
-    /**
-     * An instance of @EndpointEventListener that does not do anything.
-     */
-    public static final EndpointEventListener NO_OP = new EndpointEventListener() {
-        @Override
-        public MessageEventListener onSessionOpened(String sessionId) {
-            return MessageEventListener.NO_OP;
-        }
+    @Override
+    public List<EndpointClassNamePathPair> getEndpoints() {
+        return endpoints.call();
+    }
 
-        @Override
-        public void onSessionClosed(String sessionId) {
-            // do nothing
-        }
-    };
+    @Override
+    public List<String> getEndpointPaths() {
+        return endpointPaths.call();
+    }
+
+    @Override
+    public int getOpenSessionsCount() {
+        return openSessionsCount.call();
+    }
+
+    @Override
+    public int getMaximalOpenSessionsCount() {
+        return maxOpenSessionsCount.call();
+    }
 }

@@ -52,7 +52,7 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import org.glassfish.tyrus.ext.monitoring.jmx.ApplicationMXBean;
-import org.glassfish.tyrus.ext.monitoring.jmx.MonitoredEndpointProperties;
+import org.glassfish.tyrus.ext.monitoring.jmx.EndpointClassNamePathPair;
 
 /**
  * Endpoint that returns OK in @#onOpen if @MonitoredEndpoint1 and @ MonitoredEndpoint2 are registered in
@@ -65,22 +65,22 @@ public class MonitoredEndpoint1 {
 
     @OnOpen
     public void onOpen(Session session) throws IOException {
-        if (isEndpointRegistered("/mbean-test", new MonitoredEndpointProperties(MonitoredEndpoint1.class.getName(), "/monitoredEndpoint1"))
-                && isEndpointRegistered("/mbean-test", new MonitoredEndpointProperties(MonitoredEndpoint2.class.getName(), "/monitoredEndpoint2"))) {
+        if (isEndpointRegistered("/mbean-test", new EndpointClassNamePathPair("/monitoredEndpoint1", MonitoredEndpoint1.class.getName()))
+                && isEndpointRegistered("/mbean-test", new EndpointClassNamePathPair("/monitoredEndpoint2", MonitoredEndpoint2.class.getName()))) {
             session.getBasicRemote().sendText("OK");
             return;
         }
         session.getBasicRemote().sendText("NOK");
     }
 
-    private boolean isEndpointRegistered(String applicationName, MonitoredEndpointProperties endpoint) {
+    private boolean isEndpointRegistered(String applicationName, EndpointClassNamePathPair endpoint) {
         MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-        String fullMxBeanName = "org.glassfish.tyrus:type=application,appName=" + applicationName;
+        String fullMxBeanName = "org.glassfish.tyrus:type=" + applicationName;
         ApplicationMXBean proxy;
         try {
             proxy = JMX.newMXBeanProxy(mBeanServer, new ObjectName(fullMxBeanName), ApplicationMXBean.class);
-            List<MonitoredEndpointProperties> registeredEndpoints = proxy.getEndpoints();
-            for (MonitoredEndpointProperties registeredEndpoint : registeredEndpoints) {
+            List<EndpointClassNamePathPair> registeredEndpoints = proxy.getEndpoints();
+            for (EndpointClassNamePathPair registeredEndpoint : registeredEndpoints) {
                 if (registeredEndpoint.getEndpointPath().equals(endpoint.getEndpointPath()) && registeredEndpoint.getEndpointClassName().equals(endpoint.getEndpointClassName())) {
                     return true;
                 }

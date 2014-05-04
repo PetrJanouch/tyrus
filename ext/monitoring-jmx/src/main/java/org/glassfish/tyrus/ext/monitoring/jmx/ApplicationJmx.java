@@ -43,20 +43,30 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.glassfish.tyrus.core.monitoring.ApplicationEventListener;
 import org.glassfish.tyrus.core.monitoring.EndpointEventListener;
 
 /**
- * MBean used for exposing application-level properties.
- * For monitoring in Grizzly server an instance should be passed
- * to the server in server properties.
+ * Listens to application events and collects application-level statistics @see ApplicationEventListener.
+ * The statistics are collected by aggregating statistics from application endpoints.
+ * <p/>
+ * Creates and registers @ApplicationMXBeanImpl MXBean that exposes these application statistics.
+ * Also creates and registers @MessageStatisticsMXBean MXBean for exposing text, binary and control messages statistics.
+ * <p/>
+ * Allows defining the level monitoring will be conducted on by setting parameter in constructor that determines
+ * if message statistics should be collected on session level or not. In the former case statistics will be collected
+ * and exposed in MXBeans per session, endpoint and application. In the latter case statistics will be collected
+ * and exposed in MXBeans only per endpoint and application, which is the default setting.
+ * <p/>
+ * For monitoring in Grizzly server an instance should be passed to the server in server properties.
  * <p/>
  * <pre>
  *     serverProperties.put(ApplicationEventListener.APPLICATION_EVENT_LISTENER, new ApplicationJmx());
  * </pre>
  * <p/>
- * For use in servlet container a class name should be passed as context parameter in web.xml.
+ * For use in servlet container the class name should be passed as context parameter in web.xml.
  * <p/>
  * <pre>
  *      {@code
@@ -70,40 +80,180 @@ import org.glassfish.tyrus.core.monitoring.EndpointEventListener;
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
-public class ApplicationJmx implements ApplicationMXBean, ApplicationEventListener {
+public class ApplicationJmx implements ApplicationEventListener, MessageListener {
 
-    private final Map<String, MonitoredEndpointProperties> endpoints = new ConcurrentHashMap<String, MonitoredEndpointProperties>();
-    private String applicationName;
+    private final Map<String, EndpointJmx> endpoints = new ConcurrentHashMap<String, EndpointJmx>();
+    private final AtomicInteger openSessionsCount = new AtomicInteger(0);
+    private final Object maxOpenSessionsCountLock = new Object();
+    private final boolean monitorOnSessionLevel;
 
-    @Override
-    public List<MonitoredEndpointProperties> getEndpoints() {
-        return new ArrayList<MonitoredEndpointProperties>(endpoints.values());
+
+    private final ConcurrentMessageStatistics sentTextMessageStatistics = new ConcurrentMessageStatistics();
+    private final ConcurrentMessageStatistics sentBinaryMessageStatistics = new ConcurrentMessageStatistics();
+    private final ConcurrentMessageStatistics sentControlMessageStatistics = new ConcurrentMessageStatistics();
+
+    private final ConcurrentMessageStatistics receivedTextMessageStatistics = new ConcurrentMessageStatistics();
+    private final ConcurrentMessageStatistics receivedBinaryMessageStatistics = new ConcurrentMessageStatistics();
+    private final ConcurrentMessageStatistics receivedControlMessageStatistics = new ConcurrentMessageStatistics();
+
+    private volatile int maxOpenSessionCount = 0;
+    private volatile String applicationName;
+
+    public ApplicationJmx() {
+        monitorOnSessionLevel = false;
     }
 
-    @Override
-    public List<String> getEndpointPaths() {
-        return new ArrayList<String>(endpoints.keySet());
+    /**
+     * Constructor.
+     *
+     * @param monitorOnSessionLevel defines the level monitoring will be conducted on. If set to @true, statistics
+     *                              will be collected and exposed in MXBeans per session, endpoint and application.
+     *                              If @false, statistics will be collected and exposed in MXBeans only per endpoint
+     *                              and application.
+     */
+    public ApplicationJmx(boolean monitorOnSessionLevel) {
+        this.monitorOnSessionLevel = monitorOnSessionLevel;
     }
 
     @Override
     public void onApplicationInitialized(String applicationName) {
         this.applicationName = applicationName;
-        MBeanPublisher.registerApplicationMBean(this, applicationName);
+
+        ApplicationMXBeanImpl applicationMXBean = new ApplicationMXBeanImpl(new AggregatedMessageStatistics(sentTextMessageStatistics, sentBinaryMessageStatistics, sentControlMessageStatistics), new AggregatedMessageStatistics(receivedTextMessageStatistics, receivedBinaryMessageStatistics, receivedControlMessageStatistics), getEndpoints(), getEndpointPaths(), getOpenSessionsCount(), getMaxOpenSessionsCount());
+        MessageStatisticsMXBeanImpl textMessagesMXBean = new MessageStatisticsMXBeanImpl(sentTextMessageStatistics, receivedTextMessageStatistics);
+        MessageStatisticsMXBeanImpl controlMessagesMXBean = new MessageStatisticsMXBeanImpl(sentControlMessageStatistics, receivedControlMessageStatistics);
+        MessageStatisticsMXBeanImpl binaryMessagesMXBean = new MessageStatisticsMXBeanImpl(sentBinaryMessageStatistics, receivedBinaryMessageStatistics);
+
+        MBeanPublisher.registerApplicationMXBeans(applicationName, applicationMXBean, textMessagesMXBean, binaryMessagesMXBean, controlMessagesMXBean);
     }
 
     @Override
     public void onApplicationDestroyed() {
-        MBeanPublisher.unregisterApplicationMBean(applicationName);
+        MBeanPublisher.unregisterApplicationMXBeans(applicationName);
     }
 
     @Override
-    public EndpointEventListener onEndpointRegistered(Class<?> endpointClass, String endpointPath) {
-        endpoints.put(endpointPath, new MonitoredEndpointProperties(endpointClass.getName(), endpointPath));
-        return EndpointEventListener.NO_OP;
+    public EndpointEventListener onEndpointRegistered(String endpointPath, Class<?> endpointClass) {
+        EndpointJmx endpointJmx;
+        if (monitorOnSessionLevel) {
+            endpointJmx = new SessionAwareEndpointJmx(this, applicationName, endpointPath, endpointClass.getName());
+        } else {
+            endpointJmx = new SessionlessEndpointJmx(this, applicationName, endpointPath, endpointClass.getName());
+
+        }
+        endpoints.put(endpointPath, endpointJmx);
+        return endpointJmx;
     }
 
     @Override
     public void onEndpointUnregistered(String endpointPath) {
-        endpoints.remove(endpointPath);
+        EndpointJmx endpoint = endpoints.remove(endpointPath);
+        endpoint.unregister();
+    }
+
+    /**
+     * Returns a @Callable that will provide list of endpoint paths and endpoint class names for currently registered endpoints.
+     *
+     * @return @Callable returning list of endpoint paths and class names.
+     */
+    private Callable<List<EndpointClassNamePathPair>> getEndpoints() {
+        return new Callable<List<EndpointClassNamePathPair>>() {
+            @Override
+            public List<EndpointClassNamePathPair> call() {
+                List<EndpointClassNamePathPair> result = new ArrayList<EndpointClassNamePathPair>();
+                for (EndpointJmx endpoint : endpoints.values()) {
+                    result.add(endpoint.getEndpointClassNamePathPair());
+                }
+                return result;
+            }
+        };
+    }
+
+    /**
+     * Returns a @Callable that will provide set of endpoint paths for currently registered endpoints.
+     *
+     * @return @Callable returning set of endpoint paths.
+     */
+    private Callable<List<String>> getEndpointPaths() {
+        return new Callable<List<String>>() {
+            @Override
+            public List<String> call() {
+                return new ArrayList<String>(endpoints.keySet());
+            }
+        };
+    }
+
+    /**
+     * Returns a @Callable that will provide number of currently open sessions.
+     *
+     * @return @Callable returning a current number of open sessions.
+     */
+    private Callable<Integer> getOpenSessionsCount() {
+        return new Callable<Integer>() {
+            @Override
+            public Integer call() {
+                return openSessionsCount.get();
+            }
+        };
+    }
+
+    /**
+     * Returns a @Callable that will provide a maximal number of open sessions since the start of monitoring.
+     *
+     * @return @Callable returning a maximal number of open sessions since the start of monitoring.
+     */
+    private Callable<Integer> getMaxOpenSessionsCount() {
+        return new Callable<Integer>() {
+            @Override
+            public Integer call() {
+                return maxOpenSessionCount;
+            }
+        };
+    }
+
+
+    void onSessionOpened() {
+        openSessionsCount.incrementAndGet();
+        if (openSessionsCount.get() > maxOpenSessionCount) {
+            synchronized (maxOpenSessionsCountLock) {
+                if (openSessionsCount.get() > maxOpenSessionCount) {
+                    maxOpenSessionCount = openSessionsCount.get();
+                }
+            }
+        }
+    }
+
+    void onSessionClosed() {
+        openSessionsCount.decrementAndGet();
+    }
+
+    @Override
+    public void onTextMessageSent(long length) {
+        sentTextMessageStatistics.onMessage(length);
+    }
+
+    @Override
+    public void onBinaryMessageSent(long length) {
+        sentBinaryMessageStatistics.onMessage(length);
+    }
+
+    @Override
+    public void onControlMessageSent(long length) {
+        sentControlMessageStatistics.onMessage(length);
+    }
+
+    @Override
+    public void onTextMessageReceived(long length) {
+        receivedTextMessageStatistics.onMessage(length);
+    }
+
+    @Override
+    public void onBinaryMessageReceived(long length) {
+        receivedBinaryMessageStatistics.onMessage(length);
+    }
+
+    @Override
+    public void onControlMessageReceived(long length) {
+        receivedControlMessageStatistics.onMessage(length);
     }
 }
