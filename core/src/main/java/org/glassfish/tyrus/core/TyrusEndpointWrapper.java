@@ -648,6 +648,7 @@ public class TyrusEndpointWrapper {
                     LOGGER.log(Level.WARNING, t.getMessage(), t);
                 }
             }
+            endpointEventListener.onError(session, t);
         }
 
         return session;
@@ -700,6 +701,7 @@ public class TyrusEndpointWrapper {
                     final DeploymentException deploymentException = collector.composeComprehensiveException();
                     LOGGER.log(Level.WARNING, deploymentException.getMessage(), deploymentException);
                 }
+                endpointEventListener.onError(session, t);
             }
         }
     }
@@ -751,6 +753,7 @@ public class TyrusEndpointWrapper {
                     final DeploymentException deploymentException = collector.composeComprehensiveException();
                     LOGGER.log(Level.WARNING, deploymentException.getMessage(), deploymentException);
                 }
+                endpointEventListener.onError(session, t);
             }
         }
     }
@@ -849,6 +852,7 @@ public class TyrusEndpointWrapper {
                     final DeploymentException deploymentException = collector.composeComprehensiveException();
                     LOGGER.log(Level.WARNING, deploymentException.getMessage(), deploymentException);
                 }
+                endpointEventListener.onError(session, t);
             }
         }
     }
@@ -947,6 +951,7 @@ public class TyrusEndpointWrapper {
                     final DeploymentException deploymentException = collector.composeComprehensiveException();
                     LOGGER.log(Level.WARNING, deploymentException.getMessage(), deploymentException);
                 }
+                endpointEventListener.onError(session, t);
             }
         }
     }
@@ -1081,6 +1086,7 @@ public class TyrusEndpointWrapper {
             } else {
                 LOGGER.log(Level.WARNING, t.getMessage(), t);
             }
+            endpointEventListener.onError(session, t);
         } finally {
             session.setState(TyrusSession.State.CLOSED);
             if (clusterContext != null) {

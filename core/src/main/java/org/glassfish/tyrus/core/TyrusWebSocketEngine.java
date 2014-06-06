@@ -57,6 +57,7 @@ import javax.websocket.DeploymentException;
 import javax.websocket.Endpoint;
 import javax.websocket.EndpointConfig;
 import javax.websocket.Extension;
+import javax.websocket.Session;
 import javax.websocket.WebSocketContainer;
 import javax.websocket.server.ServerEndpointConfig;
 
@@ -67,6 +68,7 @@ import org.glassfish.tyrus.core.frame.Frame;
 import org.glassfish.tyrus.core.l10n.LocalizationMessages;
 import org.glassfish.tyrus.core.monitoring.ApplicationEventListener;
 import org.glassfish.tyrus.core.monitoring.EndpointEventListener;
+import org.glassfish.tyrus.core.monitoring.MessageEventListener;
 import org.glassfish.tyrus.core.uri.Match;
 import org.glassfish.tyrus.core.wsadl.model.Application;
 import org.glassfish.tyrus.spi.Connection;
@@ -126,7 +128,8 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
 
     private static final UpgradeInfo NOT_APPLICABLE_UPGRADE_INFO = new NoConnectionUpgradeInfo(UpgradeStatus.NOT_APPLICABLE);
     private static final UpgradeInfo HANDSHAKE_FAILED_UPGRADE_INFO = new NoConnectionUpgradeInfo(UpgradeStatus.HANDSHAKE_FAILED);
-    private static final TyrusEndpointWrapper.SessionListener NO_OP_SESSION_LISTENER = new TyrusEndpointWrapper.SessionListener() {};
+    private static final TyrusEndpointWrapper.SessionListener NO_OP_SESSION_LISTENER = new TyrusEndpointWrapper.SessionListener() {
+    };
 
     private final Set<TyrusEndpointWrapper> endpointWrappers = Collections.newSetFromMap(new ConcurrentHashMap<TyrusEndpointWrapper, Boolean>());
     private final ComponentProviderService componentProviderService = ComponentProviderService.create();
@@ -382,21 +385,22 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
 
         final ErrorCollector collector = new ErrorCollector();
 
-        AnnotatedEndpoint endpoint = AnnotatedEndpoint.fromClass(endpointClass, componentProviderService, true, incomingBufferSize, collector);
+        EndpointEventListenerWrapper endpointEventListenerWrapper = new EndpointEventListenerWrapper();
+        AnnotatedEndpoint endpoint = AnnotatedEndpoint.fromClass(endpointClass, componentProviderService, true, incomingBufferSize, collector, endpointEventListenerWrapper);
         EndpointConfig config = endpoint.getEndpointConfig();
 
-        String endpointPath = config instanceof ServerEndpointConfig ? ((ServerEndpointConfig) config).getPath() : null;
-        EndpointEventListener endpointEventListener = applicationEventListener.onEndpointRegistered(endpointPath, endpointClass);
-
         TyrusEndpointWrapper endpointWrapper = new TyrusEndpointWrapper(endpoint, config, componentProviderService, webSocketContainer,
-                contextPath, config instanceof ServerEndpointConfig ? ((ServerEndpointConfig) config).getConfigurator() : null, sessionListener, clusterContext, endpointEventListener);
+                contextPath, config instanceof ServerEndpointConfig ? ((ServerEndpointConfig) config).getConfigurator() : null, sessionListener, clusterContext, endpointEventListenerWrapper);
 
         if (collector.isEmpty()) {
             register(endpointWrapper);
         } else {
-            applicationEventListener.onEndpointUnregistered(endpointWrapper.getServerEndpointPath());
             throw collector.composeComprehensiveException();
         }
+
+        String endpointPath = config instanceof ServerEndpointConfig ? ((ServerEndpointConfig) config).getPath() : null;
+        EndpointEventListener endpointEventListener = applicationEventListener.onEndpointRegistered(endpointPath, endpointClass);
+        endpointEventListenerWrapper.setEndpointEventListener(endpointEventListener);
     }
 
     @Override
@@ -415,29 +419,30 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
             }
         } while (!parent.equals(Object.class));
 
-        EndpointEventListener endpointEventListener = applicationEventListener.onEndpointRegistered(serverConfig.getPath(), endpointClass);
+        EndpointEventListenerWrapper endpointEventListenerWrapper = new EndpointEventListenerWrapper();
 
         if (isEndpointClass) {
             // we are pretty sure that endpoint class is javax.websocket.Endpoint descendant.
             //noinspection unchecked
             endpointWrapper = new TyrusEndpointWrapper((Class<? extends Endpoint>) endpointClass, serverConfig, componentProviderService,
-                    webSocketContainer, contextPath, serverConfig.getConfigurator(), sessionListener, clusterContext, endpointEventListener);
+                    webSocketContainer, contextPath, serverConfig.getConfigurator(), sessionListener, clusterContext, endpointEventListenerWrapper);
         } else {
             final ErrorCollector collector = new ErrorCollector();
 
-            final AnnotatedEndpoint endpoint = AnnotatedEndpoint.fromClass(endpointClass, componentProviderService, true, incomingBufferSize, collector);
+            final AnnotatedEndpoint endpoint = AnnotatedEndpoint.fromClass(endpointClass, componentProviderService, true, incomingBufferSize, collector, endpointEventListenerWrapper);
             final EndpointConfig config = endpoint.getEndpointConfig();
 
             endpointWrapper = new TyrusEndpointWrapper(endpoint, config, componentProviderService, webSocketContainer,
-                    contextPath, config instanceof ServerEndpointConfig ? ((ServerEndpointConfig) config).getConfigurator() : null, sessionListener, clusterContext, endpointEventListener);
+                    contextPath, config instanceof ServerEndpointConfig ? ((ServerEndpointConfig) config).getConfigurator() : null, sessionListener, clusterContext, endpointEventListenerWrapper);
 
             if (!collector.isEmpty()) {
-                applicationEventListener.onEndpointUnregistered(endpointWrapper.getServerEndpointPath());
                 throw collector.composeComprehensiveException();
             }
         }
 
         register(endpointWrapper);
+        EndpointEventListener endpointEventListener = applicationEventListener.onEndpointRegistered(serverConfig.getPath(), endpointClass);
+        endpointEventListenerWrapper.setEndpointEventListener(endpointEventListener);
     }
 
     private void checkPath(TyrusEndpointWrapper endpoint) throws DeploymentException {
@@ -682,6 +687,33 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
         public TyrusWebSocketEngineBuilder maxSessions(Integer maxSessions) {
             this.maxSessions = maxSessions;
             return this;
+        }
+    }
+
+    /**
+     * Endpoint event listener wrapper that allows setting the wrapped endpoint event listener later.
+     */
+    private static class EndpointEventListenerWrapper implements EndpointEventListener {
+
+        private volatile EndpointEventListener endpointEventListener = EndpointEventListener.NO_OP;
+
+        void setEndpointEventListener(EndpointEventListener endpointEventListener) {
+            this.endpointEventListener = endpointEventListener;
+        }
+
+        @Override
+        public MessageEventListener onSessionOpened(String sessionId) {
+            return endpointEventListener.onSessionOpened(sessionId);
+        }
+
+        @Override
+        public void onSessionClosed(String sessionId) {
+            endpointEventListener.onSessionClosed(sessionId);
+        }
+
+        @Override
+        public void onError(Session session, Throwable t) {
+            endpointEventListener.onError(session, t);
         }
     }
 }
