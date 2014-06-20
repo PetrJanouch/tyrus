@@ -54,6 +54,7 @@ import javax.websocket.Session;
 import javax.websocket.server.ServerEndpoint;
 
 import org.glassfish.tyrus.client.ClientManager;
+import org.glassfish.tyrus.client.ClientProperties;
 import org.glassfish.tyrus.server.Server;
 import org.glassfish.tyrus.test.tools.TestContainer;
 
@@ -75,6 +76,10 @@ public class EchoTest extends TestContainer {
 
         try {
             final ClientManager client = ClientManager.createClient(JdkClientContainer.class.getName());
+            /**
+             * present because of {@link org.glassfish.tyrus.container.jdk.client.ThreadPoolSizeTest}
+             */
+            client.getProperties().put(ClientProperties.SHARED_CONTAINER_IDLE_TIMEOUT, 1);
             client.connectToServer(new Endpoint() {
                 @Override
                 public void onOpen(Session session, EndpointConfig EndpointConfig) {

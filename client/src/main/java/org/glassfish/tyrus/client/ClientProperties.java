@@ -146,4 +146,31 @@ public final class ClientProperties {
      * @see #SHARED_CONTAINER
      */
     public static final String SHARED_CONTAINER_IDLE_TIMEOUT = "org.glassfish.tyrus.client.sharedContainerIdleTimeout";
+
+    /**
+     * Client-side user property to set worker thread pool configuration.
+     * <p/>
+     * An instance of {@link org.glassfish.tyrus.client.ThreadPoolConfig} is expected for both JDK
+     * and Grizzly client. Instance of {@link org.glassfish.grizzly.threadpool.ThreadPoolConfig}, can be used
+     * for Grizzly client.
+     * <p/>
+     * Sample bellow demonstrates how to use this property:
+     * <pre>
+     *     client.getProperties().put(ClientProperties.WORKER_THREAD_POOL_CONFIG, ThreadPoolConfig.defaultConfig());
+     * </pre>
+     */
+    public static final String WORKER_THREAD_POOL_CONFIG = "org.glassfish.tyrus.client.workerThreadPoolConfig";
+
+    /**
+     * Client-side user property to set selector thread pool configuration.
+     * <p/>
+     * An instance of {@link org.glassfish.tyrus.client.ThreadPoolConfig} or {@link org.glassfish.grizzly.threadpool.ThreadPoolConfig}
+     * is expected. This feature is currently supported only in Grizzly client.
+     * <p/>
+     * Sample bellow demonstrates how to use this property:
+     * <pre>
+     *     client.getProperties().put(ClientProperties.SELECTOR_THREAD_POOL_CONFIG, ThreadPoolConfig.defaultConfig());
+     * </pre>
+     */
+    public static final String SELECTOR_THREAD_POOL_CONFIG = "org.glassfish.tyrus.client.selectorThreadPoolConfig";
 }

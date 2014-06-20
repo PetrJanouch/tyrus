@@ -137,20 +137,22 @@ public class GrizzlyClientSocket {
      * <p/>
      * Value is expected to be instance of {@link ThreadPoolConfig}, can be {@code null} (it won't be used).
      *
-     * @deprecated please use {@link org.glassfish.tyrus.container.grizzly.client.GrizzlyClientProperties#WORKER_THREAD_POOL_CONFIG}.
+     * @deprecated please use {@link org.glassfish.tyrus.client.ClientProperties#WORKER_THREAD_POOL_CONFIG} or
+     * {@link org.glassfish.tyrus.container.grizzly.client.GrizzlyClientProperties#WORKER_THREAD_POOL_CONFIG}.
      */
     @SuppressWarnings("UnusedDeclaration")
-    public static final String WORKER_THREAD_POOL_CONFIG = GrizzlyClientProperties.WORKER_THREAD_POOL_CONFIG;
+    public static final String WORKER_THREAD_POOL_CONFIG = ClientProperties.WORKER_THREAD_POOL_CONFIG;
 
     /**
      * Client-side property to set custom selector {@link ThreadPoolConfig}.
      * <p/>
      * Value is expected to be instance of {@link ThreadPoolConfig}, can be {@code null} (it won't be used).
      *
-     * @deprecated please use {@link org.glassfish.tyrus.container.grizzly.client.GrizzlyClientProperties#SELECTOR_THREAD_POOL_CONFIG}.
+     * @deprecated please use {@link org.glassfish.tyrus.client.ClientProperties#SELECTOR_THREAD_POOL_CONFIG} or
+     * {@link org.glassfish.tyrus.container.grizzly.client.GrizzlyClientProperties#SELECTOR_THREAD_POOL_CONFIG}.
      */
     @SuppressWarnings("UnusedDeclaration")
-    public static final String SELECTOR_THREAD_POOL_CONFIG = GrizzlyClientProperties.SELECTOR_THREAD_POOL_CONFIG;
+    public static final String SELECTOR_THREAD_POOL_CONFIG = ClientProperties.SELECTOR_THREAD_POOL_CONFIG;
 
     private static final Logger LOGGER = Logger.getLogger(GrizzlyClientSocket.class.getName());
 
@@ -196,8 +198,29 @@ public class GrizzlyClientSocket {
 
         try {
             this.clientSSLEngineConfigurator = sslEngineConfigurator;
-            this.workerThreadPoolConfig = Utils.getProperty(properties, GrizzlyClientProperties.WORKER_THREAD_POOL_CONFIG, ThreadPoolConfig.class);
-            this.selectorThreadPoolConfig = Utils.getProperty(properties, GrizzlyClientProperties.SELECTOR_THREAD_POOL_CONFIG, ThreadPoolConfig.class);
+
+            if (properties.containsKey(GrizzlyClientProperties.WORKER_THREAD_POOL_CONFIG)) {
+                this.workerThreadPoolConfig = Utils.getProperty(properties, GrizzlyClientProperties.WORKER_THREAD_POOL_CONFIG, ThreadPoolConfig.class);
+            } else {
+                Object threadPoolConfig = Utils.getProperty(properties, ClientProperties.WORKER_THREAD_POOL_CONFIG, Object.class);
+                if (threadPoolConfig instanceof org.glassfish.tyrus.client.ThreadPoolConfig) {
+                    this.workerThreadPoolConfig = convertToGrizzlyThreadPoolConfig((org.glassfish.tyrus.client.ThreadPoolConfig) threadPoolConfig);
+                } else {
+                    this.workerThreadPoolConfig = (ThreadPoolConfig) threadPoolConfig;
+                }
+            }
+
+            if (properties.containsKey(GrizzlyClientProperties.SELECTOR_THREAD_POOL_CONFIG)) {
+                this.selectorThreadPoolConfig = Utils.getProperty(properties, GrizzlyClientProperties.SELECTOR_THREAD_POOL_CONFIG, ThreadPoolConfig.class);
+            } else {
+                Object threadPoolConfig = Utils.getProperty(properties, ClientProperties.SELECTOR_THREAD_POOL_CONFIG, Object.class);
+                if (threadPoolConfig instanceof org.glassfish.tyrus.client.ThreadPoolConfig) {
+                    this.selectorThreadPoolConfig = convertToGrizzlyThreadPoolConfig((org.glassfish.tyrus.client.ThreadPoolConfig) threadPoolConfig);
+                } else {
+                    this.selectorThreadPoolConfig = (ThreadPoolConfig) threadPoolConfig;
+                }
+            }
+
             Boolean shared = Utils.getProperty(properties, ClientProperties.SHARED_CONTAINER, Boolean.class);
             if (shared == null || !shared) {
                 // TODO introduce some better (generic) way how to configure client from system properties.
@@ -221,6 +244,21 @@ public class GrizzlyClientSocket {
         }
 
         socketAddress = processProxy(properties);
+    }
+
+    private ThreadPoolConfig convertToGrizzlyThreadPoolConfig(org.glassfish.tyrus.client.ThreadPoolConfig original) {
+        ThreadPoolConfig result = ThreadPoolConfig.defaultConfig();
+        result.setMaxPoolSize(original.getMaxPoolSize())
+                .setCorePoolSize(original.getCorePoolSize())
+                .setPriority(original.getPriority())
+                .setDaemon(original.isDaemon())
+                .setKeepAliveTime(original.getKeepAliveTime(TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS)
+                .setInitialClassLoader(original.getInitialClassLoader())
+                .setPoolName(original.getPoolName())
+                .setQueue(original.getQueue())
+                .setQueueLimit(original.getQueueLimit())
+                .setThreadFactory(original.getThreadFactory());
+        return result;
     }
 
     /**

@@ -45,14 +45,22 @@ import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.glassfish.tyrus.client.ThreadPoolConfig;
 
 /**
  * Writes and reads data to and from a socket. Only one {@link #write(java.nio.ByteBuffer, org.glassfish.tyrus.spi.CompletionHandler)}
@@ -65,8 +73,8 @@ import java.util.logging.Logger;
 class TransportFilter extends Filter {
 
     private static final Logger LOGGER = Logger.getLogger(TransportFilter.class.getName());
-    private static final int THREAD_POOL_INITIAL_SIZE = 4;
-    private static final int CONNECTION_CLOSE_WAIT = 30_000;
+    private static final int DEFAULT_CONNECTION_CLOSE_WAIT = 30;
+    private static final String THREAD_NAME_BASE = " tyrus-jdk-client-";
     private static final AtomicInteger openedConnections = new AtomicInteger(0);
     private static final ScheduledExecutorService connectionCloseScheduler = Executors.newSingleThreadScheduledExecutor();
 
@@ -75,16 +83,23 @@ class TransportFilter extends Filter {
 
     private final Filter upstreamFilter;
     private final int inputBufferSize;
+    private final ThreadPoolConfig threadPoolConfig;
+    private final Integer containerIdleTimeout;
 
     private volatile AsynchronousSocketChannel socketChannel;
 
     /**
-     * @param upstreamFilter  a {@link org.glassfish.tyrus.container.jdk.client.Filter} positioned on top of this filter.
-     * @param inputBufferSize size of buffer to be allocated for reading data from a socket.
+     * @param upstreamFilter       a {@link org.glassfish.tyrus.container.jdk.client.Filter} positioned on top of this filter.
+     * @param inputBufferSize      size of buffer to be allocated for reading data from a socket.
+     * @param threadPoolConfig     thread pool configuration used for creating thread pool.
+     * @param containerIdleTimeout idle time after which the shared thread pool will be destroyed.
+     *                             If {@code null} default value will be used. The default value is 30 seconds.
      */
-    TransportFilter(Filter upstreamFilter, int inputBufferSize) {
+    TransportFilter(Filter upstreamFilter, int inputBufferSize, ThreadPoolConfig threadPoolConfig, Integer containerIdleTimeout) {
         this.upstreamFilter = upstreamFilter;
         this.inputBufferSize = inputBufferSize;
+        this.threadPoolConfig = threadPoolConfig;
+        this.containerIdleTimeout = containerIdleTimeout;
     }
 
     @Override
@@ -179,9 +194,27 @@ class TransportFilter extends Filter {
         if (channelGroup != null) {
             return;
         }
+
+        Queue<Runnable> taskQueue = threadPoolConfig.getQueue();
+
+        if (taskQueue == null) {
+            int taskQueueLimit = threadPoolConfig.getQueueLimit();
+
+            if (taskQueueLimit != -1) {
+                taskQueue = new RestrictedQueue(taskQueueLimit);
+            } else {
+                taskQueue = new LinkedList<>();
+            }
+        }
+
+        ThreadFactory threadFactory = threadPoolConfig.getThreadFactory();
+        if (threadFactory == null) {
+            threadFactory = new TransportThreadFactory(threadPoolConfig);
+        }
+
+        ExecutorService executor = new QueuingExecutor(threadPoolConfig.getCorePoolSize(), threadPoolConfig.getMaxPoolSize(), threadPoolConfig.getKeepAliveTime(TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS, taskQueue, threadFactory);
         // Thread pool is owned by the channel group and will be shut down when channel group is shut down
-        ExecutorService executor = Executors.newCachedThreadPool();
-        channelGroup = AsynchronousChannelGroup.withCachedThreadPool(executor, THREAD_POOL_INITIAL_SIZE);
+        channelGroup = AsynchronousChannelGroup.withCachedThreadPool(executor, threadPoolConfig.getCorePoolSize());
     }
 
     private void read(final ByteBuffer inputBuffer) {
@@ -204,11 +237,11 @@ class TransportFilter extends Filter {
                 LOGGER.log(Level.SEVERE, "Reading from a socket has failed", exc.getMessage());
                 upstreamFilter.onConnectionClosed();
             }
-
         });
     }
 
     private void scheduleClose() {
+        int closeWait = containerIdleTimeout == null ? DEFAULT_CONNECTION_CLOSE_WAIT : containerIdleTimeout;
         closeWaitTask = connectionCloseScheduler.schedule(new Runnable() {
             @Override
             public void run() {
@@ -221,6 +254,97 @@ class TransportFilter extends Filter {
                     closeWaitTask = null;
                 }
             }
-        }, CONNECTION_CLOSE_WAIT, TimeUnit.MILLISECONDS);
+        }, closeWait, TimeUnit.SECONDS);
+    }
+
+    /**
+     * A default thread factory that gets used if {@link org.glassfish.tyrus.client.ThreadPoolConfig#getThreadFactory()} is not specified.
+     */
+    private static class TransportThreadFactory implements ThreadFactory {
+
+        private static AtomicInteger threadCounter = new AtomicInteger(0);
+
+        private ThreadPoolConfig threadPoolConfig;
+
+        TransportThreadFactory(ThreadPoolConfig threadPoolConfig) {
+            this.threadPoolConfig = threadPoolConfig;
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread thread = new Thread(r);
+            thread.setName(THREAD_NAME_BASE + threadCounter.incrementAndGet());
+            thread.setPriority(threadPoolConfig.getPriority());
+            thread.setDaemon(threadPoolConfig.isDaemon());
+
+            if (threadPoolConfig.getInitialClassLoader() == null) {
+                thread.setContextClassLoader(this.getClass().getClassLoader());
+            } else {
+                thread.setContextClassLoader(threadPoolConfig.getInitialClassLoader());
+            }
+
+            return thread;
+        }
+    }
+
+    /**
+     * A thread pool executor that prefers creating new working threads over queueing tasks until the maximum poll size
+     * has been reached.
+     */
+    private class QueuingExecutor extends ThreadPoolExecutor {
+
+        private final Queue<Runnable> taskQueue;
+
+        QueuingExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, Queue<Runnable> taskQueue, ThreadFactory threadFactory) {
+            super(corePoolSize, maximumPoolSize, keepAliveTime, unit, new SynchronousQueue<Runnable>(), threadFactory);
+            this.taskQueue = taskQueue;
+        }
+
+        @Override
+        public void execute(Runnable task) {
+            synchronized (taskQueue) {
+                try {
+                    super.execute(task);
+                } catch (RejectedExecutionException e) {
+                    // all threads are occupied, try enqueuing the task
+                    if (!taskQueue.offer(task)) {
+                        throw new RejectedExecutionException("A limit of Tyrus client thread pool queue has been reached");
+                    }
+                }
+            }
+        }
+
+        @Override
+        protected void afterExecute(Runnable r, Throwable t) {
+            synchronized (taskQueue) {
+                // try if a task has been enqueued while all threads were busy
+                if (!taskQueue.isEmpty()) {
+                    execute(taskQueue.poll());
+                }
+            }
+        }
+    }
+
+    /**
+     * A wrapped linked list with maximal capacity limit.
+     */
+    private class RestrictedQueue extends LinkedList<Runnable> implements Queue<Runnable> {
+
+        private static final long serialVersionUID = -3934819978301319204L;
+        private final int capacity;
+
+        /**
+         * Constructor.
+         *
+         * @param capacity maximal capacity of the queue.
+         */
+        RestrictedQueue(int capacity) {
+            this.capacity = capacity;
+        }
+
+        @Override
+        public boolean offer(Runnable runnable) {
+            return size() != capacity && super.offer(runnable);
+        }
     }
 }
