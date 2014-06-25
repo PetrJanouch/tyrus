@@ -254,18 +254,24 @@ public final class ThreadPoolConfig {
 
     /**
      * Set max thread pool size. The default is The default is {@code Math.max(Runtime.getRuntime().availableProcessors(), 20)}.
+     * <p/>
+     * Cannot be smaller than 2.
      *
      * @param maxPoolSize the max thread pool size.
      * @return the {@link ThreadPoolConfig} with the new max pool size set.
      */
     public ThreadPoolConfig setMaxPoolSize(int maxPoolSize) {
+        if (maxPoolSize < 2) {
+            throw new IllegalArgumentException("Max thread pool size cannot be smaller than 2");
+        }
+
         this.maxPoolSize = maxPoolSize;
         return this;
     }
 
     /**
      * Get the core thread pool size - the size of the thread pool will never bee smaller than this.
-     * <p>
+     * <p/>
      * The default is 1.
      *
      * @return the core thread pool size - the size of the thread pool will never bee smaller than this.
@@ -283,6 +289,10 @@ public final class ThreadPoolConfig {
      * @return the {@link ThreadPoolConfig} with the new core pool size set.
      */
     public ThreadPoolConfig setCorePoolSize(int corePoolSize) {
+        if (corePoolSize < 0) {
+            throw new IllegalArgumentException("Core thread pool size cannot be smaller than 0");
+        }
+
         this.corePoolSize = corePoolSize;
         return this;
     }
@@ -307,7 +317,11 @@ public final class ThreadPoolConfig {
      * @return the {@link ThreadPoolConfig} with the new queue limit.
      */
     public ThreadPoolConfig setQueueLimit(int queueLimit) {
-        this.queueLimit = queueLimit;
+        if (queueLimit < 0) {
+            this.queueLimit = -1;
+        } else {
+            this.queueLimit = queueLimit;
+        }
         return this;
     }
 

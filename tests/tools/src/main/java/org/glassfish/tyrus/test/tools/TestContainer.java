@@ -177,9 +177,8 @@ public class TestContainer {
      */
     protected ClientManager createClient() {
         final String clientContainerClassName = System.getProperty("tyrus.test.container.client");
-        ClientManager client;
         if (clientContainerClassName != null) {
-            client = ClientManager.createClient(clientContainerClassName);
+            final ClientManager client = ClientManager.createClient(clientContainerClassName);
 
             /**
              * present because of {@link org.glassfish.tyrus.container.jdk.client.ThreadPoolSizeTest}
@@ -187,10 +186,10 @@ public class TestContainer {
             if (clientContainerClassName.equals("org.glassfish.tyrus.container.jdk.client.JdkClientContainer")) {
                 client.getProperties().put(ClientProperties.SHARED_CONTAINER_IDLE_TIMEOUT, 1);
             }
+            return client;
         } else {
-            client = ClientManager.createClient();
+            return ClientManager.createClient();
         }
-        return client;
     }
 
     /**

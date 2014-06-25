@@ -45,10 +45,11 @@ import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
-import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -74,7 +75,6 @@ class TransportFilter extends Filter {
 
     private static final Logger LOGGER = Logger.getLogger(TransportFilter.class.getName());
     private static final int DEFAULT_CONNECTION_CLOSE_WAIT = 30;
-    private static final String THREAD_NAME_BASE = " tyrus-jdk-client-";
     private static final AtomicInteger openedConnections = new AtomicInteger(0);
     private static final ScheduledExecutorService connectionCloseScheduler = Executors.newSingleThreadScheduledExecutor();
 
@@ -195,24 +195,22 @@ class TransportFilter extends Filter {
             return;
         }
 
-        Queue<Runnable> taskQueue = threadPoolConfig.getQueue();
-
-        if (taskQueue == null) {
-            int taskQueueLimit = threadPoolConfig.getQueueLimit();
-
-            if (taskQueueLimit != -1) {
-                taskQueue = new RestrictedQueue(taskQueueLimit);
-            } else {
-                taskQueue = new LinkedList<>();
-            }
-        }
-
         ThreadFactory threadFactory = threadPoolConfig.getThreadFactory();
         if (threadFactory == null) {
             threadFactory = new TransportThreadFactory(threadPoolConfig);
         }
+        ExecutorService executor;
+        if (threadPoolConfig.getQueue() != null) {
+            executor = new SynchronizedQueuingExecutor(threadPoolConfig.getCorePoolSize(), threadPoolConfig.getMaxPoolSize(), threadPoolConfig.getKeepAliveTime(TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS, threadPoolConfig.getQueue(), threadFactory);
+        } else {
+            int taskQueueLimit = threadPoolConfig.getQueueLimit();
+            if (taskQueueLimit == -1) {
+                taskQueueLimit = Integer.MAX_VALUE;
+            }
 
-        ExecutorService executor = new QueuingExecutor(threadPoolConfig.getCorePoolSize(), threadPoolConfig.getMaxPoolSize(), threadPoolConfig.getKeepAliveTime(TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS, taskQueue, threadFactory);
+            executor = new QueuingExecutor(threadPoolConfig.getCorePoolSize(), threadPoolConfig.getMaxPoolSize(), threadPoolConfig.getKeepAliveTime(TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS, taskQueueLimit, threadFactory);
+        }
+
         // Thread pool is owned by the channel group and will be shut down when channel group is shut down
         channelGroup = AsynchronousChannelGroup.withCachedThreadPool(executor, threadPoolConfig.getCorePoolSize());
     }
@@ -262,9 +260,10 @@ class TransportFilter extends Filter {
      */
     private static class TransportThreadFactory implements ThreadFactory {
 
-        private static AtomicInteger threadCounter = new AtomicInteger(0);
+        private static final String THREAD_NAME_BASE = " tyrus-jdk-client-";
+        private static final AtomicInteger threadCounter = new AtomicInteger(0);
 
-        private ThreadPoolConfig threadPoolConfig;
+        private final ThreadPoolConfig threadPoolConfig;
 
         TransportThreadFactory(ThreadPoolConfig threadPoolConfig) {
             this.threadPoolConfig = threadPoolConfig;
@@ -290,12 +289,16 @@ class TransportFilter extends Filter {
     /**
      * A thread pool executor that prefers creating new working threads over queueing tasks until the maximum poll size
      * has been reached.
+     * </p>
+     * The difference from {@link org.glassfish.tyrus.container.jdk.client.TransportFilter.QueuingExecutor}, is that
+     * a it is used when an user-provided queue is used for queuing the tasks. The access to the Queue has to be synchronized,
+     * because it is not guaranteed tha the user has provided a thread safe {@link java.util.Queue} implementation.
      */
-    private class QueuingExecutor extends ThreadPoolExecutor {
+    private class SynchronizedQueuingExecutor extends ThreadPoolExecutor {
 
         private final Queue<Runnable> taskQueue;
 
-        QueuingExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, Queue<Runnable> taskQueue, ThreadFactory threadFactory) {
+        SynchronizedQueuingExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, Queue<Runnable> taskQueue, ThreadFactory threadFactory) {
             super(corePoolSize, maximumPoolSize, keepAliveTime, unit, new SynchronousQueue<Runnable>(), threadFactory);
             this.taskQueue = taskQueue;
         }
@@ -308,7 +311,7 @@ class TransportFilter extends Filter {
                 } catch (RejectedExecutionException e) {
                     // all threads are occupied, try enqueuing the task
                     if (!taskQueue.offer(task)) {
-                        throw new RejectedExecutionException("A limit of Tyrus client thread pool queue has been reached");
+                        throw new RejectedExecutionException("A limit of Tyrus client thread pool queue has been reached.", e);
                     }
                 }
             }
@@ -326,25 +329,58 @@ class TransportFilter extends Filter {
     }
 
     /**
-     * A wrapped linked list with maximal capacity limit.
+     * A thread pool executor that prefers creating new working threads over queueing tasks until the maximum poll size
+     * has been reached.
+     * <p/>
+     * The difference from {@link org.glassfish.tyrus.container.jdk.client.TransportFilter.SynchronizedQueuingExecutor}
+     * is that it uses {@link java.util.concurrent.LinkedBlockingDeque} as the task queue implementation and therefore
+     * the access to the task queue does not have to be synchronized.
      */
-    private class RestrictedQueue extends LinkedList<Runnable> implements Queue<Runnable> {
+    private class QueuingExecutor extends ThreadPoolExecutor {
 
-        private static final long serialVersionUID = -3934819978301319204L;
-        private final int capacity;
+        private final BlockingQueue<Runnable> taskQueue;
 
-        /**
-         * Constructor.
-         *
-         * @param capacity maximal capacity of the queue.
-         */
-        RestrictedQueue(int capacity) {
-            this.capacity = capacity;
+        QueuingExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, int queueCapacity, ThreadFactory threadFactory) {
+            super(corePoolSize, maximumPoolSize, keepAliveTime, unit, new SynchronousQueue<Runnable>(), threadFactory);
+            this.taskQueue = new LinkedBlockingDeque<>(queueCapacity);
         }
 
         @Override
-        public boolean offer(Runnable runnable) {
-            return size() != capacity && super.offer(runnable);
+        public void execute(Runnable task) {
+            try {
+                super.execute(task);
+            } catch (RejectedExecutionException e) {
+                // all threads are occupied, try enqueuing the task
+                if (!taskQueue.offer(task)) {
+                    throw new RejectedExecutionException("A limit of Tyrus client thread pool queue has been reached.", e);
+                }
+
+               /*
+                * There is one improbable situation that could possibly cause that a task could stay in the queue indefinitely,
+                * if all the threads have finished their tasks in the interval between this tasks has been rejected and it has
+                * been successfully enqueued. If this has happened the task must be dequeued and an attempt to execute it should
+                * be repeated.
+                */
+                if (getActiveCount() == 0) {
+                    /*
+                     * There is no guarantee that the same tasks that has been enqueued above will be dequeued,
+                     * but trying to execute one arbitrary task by everyone in this situation is enough to clear the queue.
+                     */
+                    Runnable dequeuedTask = taskQueue.poll();
+
+                    if (dequeuedTask != null) {
+                        execute(dequeuedTask);
+                    }
+                }
+            }
+        }
+
+        @Override
+        protected void afterExecute(Runnable r, Throwable t) {
+            // try if a task has been enqueue enqueued while all threads were busy
+            if (!taskQueue.isEmpty()) {
+                execute(taskQueue.poll());
+            }
         }
     }
 }

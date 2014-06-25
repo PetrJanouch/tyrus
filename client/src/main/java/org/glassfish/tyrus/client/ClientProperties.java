@@ -160,17 +160,4 @@ public final class ClientProperties {
      * </pre>
      */
     public static final String WORKER_THREAD_POOL_CONFIG = "org.glassfish.tyrus.client.workerThreadPoolConfig";
-
-    /**
-     * Client-side user property to set selector thread pool configuration.
-     * <p/>
-     * An instance of {@link org.glassfish.tyrus.client.ThreadPoolConfig} or {@link org.glassfish.grizzly.threadpool.ThreadPoolConfig}
-     * is expected. This feature is currently supported only in Grizzly client.
-     * <p/>
-     * Sample bellow demonstrates how to use this property:
-     * <pre>
-     *     client.getProperties().put(ClientProperties.SELECTOR_THREAD_POOL_CONFIG, ThreadPoolConfig.defaultConfig());
-     * </pre>
-     */
-    public static final String SELECTOR_THREAD_POOL_CONFIG = "org.glassfish.tyrus.client.selectorThreadPoolConfig";
 }

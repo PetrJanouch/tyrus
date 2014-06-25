@@ -40,10 +40,11 @@
 package org.glassfish.tyrus.container.jdk.client;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.websocket.ClientEndpoint;
 import javax.websocket.OnMessage;
@@ -60,21 +61,20 @@ import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.assertTrue;
 
-import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.fail;
 
 /**
- * Tests that the JDK client thread pool is limited properly.
+ * When the capacity of a thread pool has been exhausted, tasks get queued. This tests test that enqueued tasks get
+ * executed when threads are not busy anymore.
  * <p/>
- * It blocks client thread in @OnMessage and tests that the number of delivered messages equals maximal thread pool size.
+ * The default queue and a queue provided by the user is tested.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
-public class ThreadPoolSizeTest extends TestContainer {
+public class EnqueuedTasksTest extends TestContainer {
 
-    public static volatile AtomicInteger messagesCounter = null;
     public static volatile CountDownLatch blockingLatch = null;
-    public static volatile CountDownLatch messagesLatch = null;
+    public static volatile CountDownLatch totalMessagesLatch = null;
 
     @Before
     public void beforeTest() {
@@ -87,37 +87,40 @@ public class ThreadPoolSizeTest extends TestContainer {
         }
     }
 
+    /**
+     *
+     */
     @Test
-    public void testDefaultMaxThreadPoolSize() {
-        ClientManager client = ClientManager.createClient(JdkClientContainer.class.getName());
-        /**
-         * default defined by {@link org.glassfish.tyrus.client.ThreadPoolConfig}
-         */
-        int maxThreads = Math.max(20, Runtime.getRuntime().availableProcessors());
-        testMaxThreadPoolSize(maxThreads, client);
+    public void testUserProvidedQueue() {
+        ThreadPoolConfig threadPoolConfig = ThreadPoolConfig.defaultConfig();
+        threadPoolConfig.setQueue(new LinkedList<Runnable>());
+        testEnqueuedTasksGetExecuted(threadPoolConfig);
     }
 
     @Test
-    public void testMaxThreadPoolSize() {
-        ClientManager client = ClientManager.createClient(JdkClientContainer.class.getName());
-        ThreadPoolConfig threadPoolConfig = ThreadPoolConfig.defaultConfig().setMaxPoolSize(15);
-        client.getProperties().put(ClientProperties.WORKER_THREAD_POOL_CONFIG, threadPoolConfig);
-        testMaxThreadPoolSize(15, client);
+    public void testDefaultQueue() {
+        ThreadPoolConfig threadPoolConfig = ThreadPoolConfig.defaultConfig();
+        testEnqueuedTasksGetExecuted(threadPoolConfig);
     }
 
-    private void testMaxThreadPoolSize(int maxThreadPoolSize, ClientManager client) {
+    private void testEnqueuedTasksGetExecuted(ThreadPoolConfig threadPoolConfig) {
         Server server = null;
         try {
-            messagesCounter = new AtomicInteger(0);
             blockingLatch = new CountDownLatch(1);
-            messagesLatch = new CountDownLatch(maxThreadPoolSize);
+            totalMessagesLatch = new CountDownLatch(20);
+            CountDownLatch enqueueLatch = new CountDownLatch(10);
+
             server = startServer(AnnotatedServerEndpoint.class);
 
+            ClientManager client = ClientManager.createClient(JdkClientContainer.class.getName());
+            threadPoolConfig.setMaxPoolSize(10)
+                    .setQueue(new CountingQueue(enqueueLatch));
+            client.getProperties().put(ClientProperties.WORKER_THREAD_POOL_CONFIG, threadPoolConfig);
             client.getProperties().put(ClientProperties.SHARED_CONTAINER_IDLE_TIMEOUT, 1);
 
             List<Session> sessions = new ArrayList<>();
 
-            for (int i = 0; i < maxThreadPoolSize + 10; i++) {
+            for (int i = 0; i < 20; i++) {
                 Session session = client.connectToServer(BlockingClientEndpoint.class, getURI(AnnotatedServerEndpoint.class));
                 sessions.add(session);
             }
@@ -126,14 +129,12 @@ public class ThreadPoolSizeTest extends TestContainer {
                 session.getAsyncRemote().sendText("hi");
             }
 
-            // wait for all threads to get blocked
-            assertTrue(messagesLatch.await(1, TimeUnit.SECONDS));
-            // wait some more time (we test nothing gets delivered in this interval)
-            Thread.sleep(300);
-            // assert number of delivered messages is equal to the thread pool size
-            assertEquals(maxThreadPoolSize, messagesCounter.get());
+            // 10 tasks got enqueued
+            assertTrue(enqueueLatch.await(1, TimeUnit.SECONDS));
             // let the blocked threads go
             blockingLatch.countDown();
+            // check everything got delivered
+            assertTrue(totalMessagesLatch.await(1, TimeUnit.SECONDS));
         } catch (Exception e) {
             e.printStackTrace();
             fail();
@@ -156,15 +157,30 @@ public class ThreadPoolSizeTest extends TestContainer {
 
         @OnMessage
         public void onMessage(String message) throws InterruptedException {
-            if (messagesLatch != null) {
-                messagesLatch.countDown();
-            }
-
-            if (messagesCounter != null) {
-                messagesCounter.incrementAndGet();
-            }
-
             blockingLatch.await(1, TimeUnit.SECONDS);
+
+            if (totalMessagesLatch != null) {
+                totalMessagesLatch.countDown();
+            }
+        }
+    }
+
+    /**
+     * A wrapper of {@link java.util.LinkedList} that counts enqueued elements.
+     */
+    private static class CountingQueue extends LinkedList<Runnable> implements Queue<Runnable> {
+
+        private static final long serialVersionUID = -1356740236369553900L;
+        private final CountDownLatch enqueueLatch;
+
+        CountingQueue(CountDownLatch enqueueLatch) {
+            this.enqueueLatch = enqueueLatch;
+        }
+
+        @Override
+        public boolean offer(Runnable runnable) {
+            enqueueLatch.countDown();
+            return super.offer(runnable);
         }
     }
 }

@@ -60,37 +60,37 @@ import static org.junit.Assert.fail;
 
 /**
  * Test that both {@link GrizzlyClientProperties} and {@link ClientProperties} are supported when configuring Grizzly
- * client thread pool.
+ * client worker thread pool.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
 public class GrizzlyClientThreadPoolConfigPropertiesTest extends TestContainer {
 
     /**
-     * Test that {@link GrizzlyClientProperties} are supported with {@link org.glassfish.grizzly.threadpool.ThreadPoolConfig}.
+     * Test that {@link GrizzlyClientProperties#WORKER_THREAD_POOL_CONFIG} is supported with {@link org.glassfish.grizzly.threadpool.ThreadPoolConfig}.
      */
     @Test
     public void testGrizzlyThreadPoolConfigGrizzlyProperties() {
-        testThreadPoolConfigProperties(GrizzlyClientProperties.WORKER_THREAD_POOL_CONFIG, GrizzlyClientProperties.SELECTOR_THREAD_POOL_CONFIG, true);
+        testThreadPoolConfigProperties(GrizzlyClientProperties.WORKER_THREAD_POOL_CONFIG, true);
     }
 
     /**
-     * Test that {@link ClientProperties} are supported with {@link org.glassfish.grizzly.threadpool.ThreadPoolConfig}.
+     * Test that {@link ClientProperties#WORKER_THREAD_POOL_CONFIG} is supported with {@link org.glassfish.grizzly.threadpool.ThreadPoolConfig}.
      */
     @Test
     public void testGrizzlyThreadPoolConfigClientProperties() {
-        testThreadPoolConfigProperties(ClientProperties.WORKER_THREAD_POOL_CONFIG, ClientProperties.SELECTOR_THREAD_POOL_CONFIG, true);
+        testThreadPoolConfigProperties(ClientProperties.WORKER_THREAD_POOL_CONFIG, true);
     }
 
     /**
-     * Test that {@link ClientProperties} are supported with {@link org.glassfish.tyrus.client.ThreadPoolConfig}.
+     * Test that {@link ClientProperties#WORKER_THREAD_POOL_CONFIG} is supported with {@link org.glassfish.tyrus.client.ThreadPoolConfig}.
      */
     @Test
     public void testTyrusThreadPoolConfigClientProperties() {
-        testThreadPoolConfigProperties(ClientProperties.WORKER_THREAD_POOL_CONFIG, ClientProperties.SELECTOR_THREAD_POOL_CONFIG, false);
+        testThreadPoolConfigProperties(ClientProperties.WORKER_THREAD_POOL_CONFIG, false);
     }
 
-    private void testThreadPoolConfigProperties(String workerThreadPoolProperty, String selectorThreadPoolProperty, boolean useGrizzlyConfig) {
+    private void testThreadPoolConfigProperties(String workerThreadPoolProperty, boolean useGrizzlyConfig) {
         /*
             Also setting client.getProperties().put(ClientProperties.SHARED_CONTAINER, ... ) is supported - if a test running
             before this test does that, this test might fail.
@@ -103,7 +103,6 @@ public class GrizzlyClientThreadPoolConfigPropertiesTest extends TestContainer {
         Server server = null;
         try {
             final CountDownLatch workerPoolLatch = new CountDownLatch(1);
-            final CountDownLatch selectorPoolLatch = new CountDownLatch(1);
 
             server = startServer(AnnotatedServerEndpoint.class);
             ClientManager client = ClientManager.createClient();
@@ -119,18 +118,7 @@ public class GrizzlyClientThreadPoolConfigPropertiesTest extends TestContainer {
                             }
                         });
 
-                ThreadPoolConfig selectorThreadPoolConfig = ThreadPoolConfig.defaultConfig()
-                        .setThreadFactory(new ThreadFactory() {
-
-                            @Override
-                            public Thread newThread(Runnable r) {
-                                selectorPoolLatch.countDown();
-                                return new Thread(r);
-                            }
-                        });
-
                 client.getProperties().put(workerThreadPoolProperty, workerThreadPoolConfig);
-                client.getProperties().put(selectorThreadPoolProperty, selectorThreadPoolConfig);
             } else {
                 org.glassfish.tyrus.client.ThreadPoolConfig workerThreadPoolConfig = org.glassfish.tyrus.client.ThreadPoolConfig.defaultConfig()
                         .setThreadFactory(new ThreadFactory() {
@@ -142,23 +130,11 @@ public class GrizzlyClientThreadPoolConfigPropertiesTest extends TestContainer {
                             }
                         });
 
-                org.glassfish.tyrus.client.ThreadPoolConfig selectorThreadPoolConfig = org.glassfish.tyrus.client.ThreadPoolConfig.defaultConfig()
-                        .setThreadFactory(new ThreadFactory() {
-
-                            @Override
-                            public Thread newThread(Runnable r) {
-                                selectorPoolLatch.countDown();
-                                return new Thread(r);
-                            }
-                        });
-
                 client.getProperties().put(workerThreadPoolProperty, workerThreadPoolConfig);
-                client.getProperties().put(selectorThreadPoolProperty, selectorThreadPoolConfig);
             }
 
             client.connectToServer(AnnotatedClientEndpoint.class, getURI(AnnotatedServerEndpoint.class));
 
-            assertTrue(selectorPoolLatch.await(1, TimeUnit.SECONDS));
             assertTrue(workerPoolLatch.await(1, TimeUnit.SECONDS));
         } catch (Exception e) {
             e.printStackTrace();
