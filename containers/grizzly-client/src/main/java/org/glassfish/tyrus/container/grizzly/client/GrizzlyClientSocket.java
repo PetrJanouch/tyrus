@@ -133,7 +133,7 @@ public class GrizzlyClientSocket {
     public static final String PROXY_HEADERS = ClientProperties.PROXY_HEADERS;
 
     /**
-     * Client-side property to set custom worker {@link ThreadPoolConfig}. // !!!
+     * Client-side property to set custom worker {@link ThreadPoolConfig}.
      * <p/>
      * Value is expected to be instance of {@link ThreadPoolConfig}, can be {@code null} (it won't be used).
      *
@@ -143,7 +143,7 @@ public class GrizzlyClientSocket {
     public static final String WORKER_THREAD_POOL_CONFIG = GrizzlyClientProperties.WORKER_THREAD_POOL_CONFIG;
 
     /**
-     * Client-side property to set custom selector {@link ThreadPoolConfig}. // !!!
+     * Client-side property to set custom selector {@link ThreadPoolConfig}.
      * <p/>
      * Value is expected to be instance of {@link ThreadPoolConfig}, can be {@code null} (it won't be used).
      *

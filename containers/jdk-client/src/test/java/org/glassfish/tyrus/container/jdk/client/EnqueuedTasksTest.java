@@ -87,9 +87,6 @@ public class EnqueuedTasksTest extends TestContainer {
         }
     }
 
-    /**
-     *
-     */
     @Test
     public void testUserProvidedQueue() {
         ThreadPoolConfig threadPoolConfig = ThreadPoolConfig.defaultConfig();

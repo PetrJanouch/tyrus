@@ -305,11 +305,23 @@ class TransportFilter extends Filter {
 
         @Override
         public void execute(Runnable task) {
+            submitTask(task);
+        }
+
+        /**
+         * Submit a task for execution, if the maximum thread limit has been reached and all the threads are occupied,
+         * enqueue the task. The task is not executed by the current thread, but by a thread from the thread pool.
+         *
+         * @param task to be executed.
+         */
+        private void submitTask(Runnable task) {
             synchronized (taskQueue) {
                 try {
                     super.execute(task);
                 } catch (RejectedExecutionException e) {
-                    // all threads are occupied, try enqueuing the task
+                    /* All threads are occupied, try enqueuing the task.
+                     * Each thread from the thread pool checks the queue after it has finished executing a task.
+                     */
                     if (!taskQueue.offer(task)) {
                         throw new RejectedExecutionException("A limit of Tyrus client thread pool queue has been reached.", e);
                     }
@@ -319,10 +331,12 @@ class TransportFilter extends Filter {
 
         @Override
         protected void afterExecute(Runnable r, Throwable t) {
+            super.afterExecute(r, t);
             synchronized (taskQueue) {
-                // try if a task has been enqueued while all threads were busy
-                if (!taskQueue.isEmpty()) {
-                    execute(taskQueue.poll());
+                // Try if a task has been enqueued while all threads were busy.
+                Runnable queuedTask = taskQueue.poll();
+                if (queuedTask != null) {
+                    submitTask(queuedTask);
                 }
             }
         }
@@ -347,10 +361,22 @@ class TransportFilter extends Filter {
 
         @Override
         public void execute(Runnable task) {
+            submitTask(task);
+        }
+
+        /**
+         * Submit a task for execution, if the maximum thread limit has been reached and all the threads are occupied,
+         * enqueue the task. The task is not executed by the current thread, but by a thread from the thread pool.
+         *
+         * @param task to be executed.
+         */
+        private void submitTask(Runnable task) {
             try {
                 super.execute(task);
             } catch (RejectedExecutionException e) {
-                // all threads are occupied, try enqueuing the task
+                /* All threads are occupied, try enqueuing the task.
+                 * Each thread from the thread pool checks the queue after it has finished executing a task.
+                 */
                 if (!taskQueue.offer(task)) {
                     throw new RejectedExecutionException("A limit of Tyrus client thread pool queue has been reached.", e);
                 }
@@ -369,7 +395,7 @@ class TransportFilter extends Filter {
                     Runnable dequeuedTask = taskQueue.poll();
 
                     if (dequeuedTask != null) {
-                        execute(dequeuedTask);
+                        submitTask(dequeuedTask);
                     }
                 }
             }
@@ -377,9 +403,11 @@ class TransportFilter extends Filter {
 
         @Override
         protected void afterExecute(Runnable r, Throwable t) {
-            // try if a task has been enqueue enqueued while all threads were busy
-            if (!taskQueue.isEmpty()) {
-                execute(taskQueue.poll());
+            super.afterExecute(r, t);
+            // Try if a task has been enqueued while all threads were busy.
+            Runnable queuedTask = taskQueue.poll();
+            if (queuedTask != null) {
+                submitTask(queuedTask);
             }
         }
     }
