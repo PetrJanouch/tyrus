@@ -43,92 +43,122 @@ import java.io.IOException;
 
 import javax.websocket.DeploymentException;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
+import static org.junit.Assume.assumeTrue;
 
 /**
- * Insecured (not using SSL) run of tests in {@link org.glassfish.tyrus.tests.servlet.basic.ServletTestBase}
+ * Secured (using SSL) run of tests in {@link org.glassfish.tyrus.tests.servlet.basic.ServletTestBase}.
+ * <p/>
+ * The test will be run only if {@code tyrus.test.port.ssl} is set.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
-public class ServletTest extends ServletTestBase {
+public class SslServletTest extends ServletTestBase {
+
+    private String testPort = null;
+
+    /**
+     * If the {@code tyrus.test.port.ssl} is set the tests will run and the value of {@code tyrus.test.port.ssl} will
+     * replace {@code tyrus.test.port} for the duration of this tests.
+     */
+    @Before
+    public void before() {
+        String sslPort = System.getProperty("tyrus.test.port.ssl");
+        // if sslPort is not set the test will be skipped
+        assumeTrue(sslPort != null);
+
+        if (sslPort != null) {
+            testPort = System.getProperty("tyrus.test.port");
+            System.setProperty("tyrus.test.port", sslPort);
+        }
+    }
+
+    @After
+    public void after() {
+        if (testPort != null) {
+            System.setProperty("tyrus.test.port", testPort);
+        }
+    }
 
     @Test
     public void testPlainEchoShort() throws DeploymentException, InterruptedException, IOException {
-        super.testPlainEchoShort("ws");
+        super.testPlainEchoShort("wss");
     }
 
     @Test
     public void testPlainEchoShort100() throws DeploymentException, InterruptedException, IOException {
-        super.testPlainEchoShort100("ws");
+        super.testPlainEchoShort100("wss");
     }
 
     @Test
     public void testPlainEchoShort10Sequence() throws DeploymentException, InterruptedException, IOException {
-        super.testPlainEchoShort10Sequence("ws");
+        super.testPlainEchoShort10Sequence("wss");
     }
 
     @Test
     public void testPlainEchoShort10SequenceReturnedSession() throws DeploymentException, InterruptedException, IOException {
-        super.testPlainEchoShort10SequenceReturnedSession("ws");
+        super.testPlainEchoShort10SequenceReturnedSession("wss");
     }
 
     @Test
     public void testPlainEchoLong() throws DeploymentException, InterruptedException, IOException {
-        super.testPlainEchoLong("ws");
+        super.testPlainEchoLong("wss");
     }
 
     @Test
     public void testPlainEchoLong10() throws DeploymentException, InterruptedException, IOException {
-        super.testPlainEchoLong10("ws");
+        super.testPlainEchoLong10("wss");
     }
 
     @Test
     public void testPlainEchoLong10Sequence() throws DeploymentException, InterruptedException, IOException {
-        super.testPlainEchoLong10Sequence("ws");
+        super.testPlainEchoLong10Sequence("wss");
     }
 
     @Test
     public void testGetRequestURI() throws DeploymentException, InterruptedException, IOException {
-        super.testGetRequestURI("ws");
+        super.testGetRequestURI("wss");
     }
 
     @Test
     public void testOnOpenClose() throws DeploymentException, InterruptedException, IOException {
-        super.testOnOpenClose("ws");
+        super.testOnOpenClose("wss");
     }
 
     @Test
     public void testMultiEcho() throws IOException, DeploymentException, InterruptedException {
-        super.testMultiEcho("ws");
+        super.testMultiEcho("wss");
     }
 
     @Test
     public void testTyrusBroadcastString() throws IOException, DeploymentException, InterruptedException {
-        super.testTyrusBroadcastString("ws");
+        super.testTyrusBroadcastString("wss");
     }
 
     @Test
     public void testTyrusBroadcastBinary() throws IOException, DeploymentException, InterruptedException {
-        super.testTyrusBroadcastBinary("ws");
+        super.testTyrusBroadcastBinary("wss");
     }
 
     @Test
     public void testWebSocketBroadcast() throws IOException, DeploymentException, InterruptedException {
-        super.testWebSocketBroadcast("ws");
+        super.testWebSocketBroadcast("wss");
     }
 
     @Test
     public void testTyrusBroadcastStringSharedClientContainer() throws IOException, DeploymentException, InterruptedException {
-        super.testTyrusBroadcastStringSharedClientContainer("ws");
+        super.testTyrusBroadcastStringSharedClientContainer("wss");
     }
 
     @Test
     public void testTyrusBroadcastBinarySharedClientContainer() throws IOException, DeploymentException, InterruptedException {
-        super.testTyrusBroadcastBinarySharedClientContainer("ws");
+        super.testTyrusBroadcastBinarySharedClientContainer("wss");
     }
 
     @Test
     public void testWebSocketBroadcastSharedClientContainer() throws IOException, DeploymentException, InterruptedException {
-        super.testWebSocketBroadcastSharedClientContainer("ws");
+        super.testWebSocketBroadcastSharedClientContainer("wss");
     }
 }
