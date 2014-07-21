@@ -863,7 +863,7 @@ public class GrizzlyClientSocket {
             supported by Tyrus) */
             SSLEngine sslEngine = super.createSSLEngine(peerHost, -1);
 
-            if (hostVerificationEnabled) {
+            if (hostVerificationEnabled && hostnameVerifier == null) {
                 try {
                     // JDK 6
                     Class<?> aClass = Class.forName("com.sun.net.ssl.internal.ssl.SSLEngineImpl");

@@ -103,7 +103,7 @@ class SslFilter extends Filter {
          * This can be moved to {@link SslEngineConfigurator} with the rest of {@link SSLEngine} configuration
          * when {@link SslEngineConfigurator} supports Java 7.
          */
-        if (sslEngineConfigurator.isHostVerificationEnabled()) {
+        if (sslEngineConfigurator.isHostVerificationEnabled() && sslEngineConfigurator.getHostnameVerifier() == null) {
             SSLParameters sslParameters = sslEngine.getSSLParameters();
             sslParameters.setEndpointIdentificationAlgorithm("HTTPS");
             sslEngine.setSSLParameters(sslParameters);

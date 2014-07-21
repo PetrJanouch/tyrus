@@ -111,7 +111,6 @@ public class HostVerificationTest extends TestContainer {
         try {
             ClientManager client = createClient();
             SslEngineConfigurator sslEngineConfigurator = new SslEngineConfigurator(new SslContextConfigurator());
-            sslEngineConfigurator.setHostVerificationEnabled(false);
             sslEngineConfigurator.setHostnameVerifier(new HostnameVerifier() {
                 @Override
                 public boolean verify(String s, SSLSession sslSession) {
@@ -135,7 +134,6 @@ public class HostVerificationTest extends TestContainer {
         try {
             ClientManager client = createClient();
             SslEngineConfigurator sslEngineConfigurator = new SslEngineConfigurator(new SslContextConfigurator());
-            sslEngineConfigurator.setHostVerificationEnabled(false);
             sslEngineConfigurator.setHostnameVerifier(new HostnameVerifier() {
                 @Override
                 public boolean verify(String s, SSLSession sslSession) {

@@ -102,14 +102,12 @@ public class SslEngineConfigurator {
      */
     private boolean isCipherConfigured = false;
     /**
-     * if {@code false} (the default value is {@code true}), the host provided as an argument to {@link #createSSLEngine(String)}
-     * will not be checked against the host in the certificate provided by the server during the SSL handshake.
+     * {@code true} if host should be verified.
      */
     private boolean hostVerificationEnabled = true;
 
     /**
-     * a custom hostname verifier that will be used to verify the hostname provided in the server certificate against
-     * the host provided as an argument to {@link #createSSLEngine(String)}.
+     * A custom hostname verifier.
      */
     private HostnameVerifier hostnameVerifier = null;
 
@@ -331,18 +329,16 @@ public class SslEngineConfigurator {
     }
 
     /**
-     * Return {@code true} if host should verified.
-     *
-     * @return {@code false} (the default value is {@code true}), the host provided as an argument to {@link #createSSLEngine(String)}
-     * will not be checked against the host in the certificate provided by the server.
+     * Return {@code true} if the host the client connects to will be checked against the host in the certificate
+     * provided by the server.
      */
     public boolean isHostVerificationEnabled() {
         return hostVerificationEnabled;
     }
 
     /**
-     * Set {@code false} (the default value is {@code true}) if the host provided as an argument to {@link #createSSLEngine(String)}
-     * should not be checked against the host in the certificate provided by the server.
+     * Set {@code false} if the host the client connects to should not be checked against the host in the certificate
+     * provided by the server. (the default value is {@code true})
      *
      * @param hostVerificationEnabled {@code true}) if the host should be verified.
      */
@@ -352,14 +348,9 @@ public class SslEngineConfigurator {
 
     /**
      * Get a custom hostname verifier that will be used to verify the hostname provided in the server certificate against
-     * the host provided as an argument to {@link #createSSLEngine(String)}.
+     * the host the client connects to.
      * <p/>
-     * If {@link #setHostVerificationEnabled(boolean)} is set to {@code true} the verification logic triggered by it
-     * will be invoked before the provided custom hostname verifier and if it fails the custom hostname verifier will
-     * not be invoked.
-     *
-     * @return a custom hostname verifier that will be used to verify the hostname provided in the server certificate against
-     * the host provided as an argument to {@link #createSSLEngine(String)}
+     * If the custom hostname verifier is set, the default verification will not be triggered.
      */
     public HostnameVerifier getHostnameVerifier() {
         return hostnameVerifier;
@@ -367,13 +358,11 @@ public class SslEngineConfigurator {
 
     /**
      * Set a custom hostname verifier that will be used to verify the hostname provided in the server certificate against
-     * the host provided as an argument to {@link #createSSLEngine(String)}.
+     * the host the client connects to.
      * <p/>
-     * If {@link #setHostVerificationEnabled(boolean)} is set to {@code true} the verification logic triggered by it
-     * will be invoked before the provided custom hostname verifier and if it fails the custom hostname verifier will
-     * not be invoked.
+     * If the custom hostname verifier is set, the default verification will not be triggered.
      *
-     * @param hostnameVerifier a custom host name verifier
+     * @param hostnameVerifier a custom host name verifier.
      */
     public void setHostnameVerifier(HostnameVerifier hostnameVerifier) {
         this.hostnameVerifier = hostnameVerifier;
