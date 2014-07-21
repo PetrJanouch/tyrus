@@ -329,40 +329,43 @@ public class SslEngineConfigurator {
     }
 
     /**
-     * Return {@code true} if the host the client connects to will be checked against the host in the certificate
-     * provided by the server.
+     * Get the hostname verification state.
+     *
+     * @return {@code true} if the hostname verification is enabled, {@code false} otherwise.
      */
     public boolean isHostVerificationEnabled() {
         return hostVerificationEnabled;
     }
 
     /**
-     * Set {@code false} if the host the client connects to should not be checked against the host in the certificate
-     * provided by the server. (the default value is {@code true})
+     * Set hostname verification.
      *
-     * @param hostVerificationEnabled {@code true}) if the host should be verified.
+     * @param hostVerificationEnabled when {@code true}, servers hostname will be verified using JDK default
+     *                                {@link HostnameVerifier}. When {@code false}, hostname verification won't be
+     *                                performed unless custom {@link HostnameVerifier} is set.
+     * @see #setHostnameVerifier(HostnameVerifier)
      */
     public void setHostVerificationEnabled(boolean hostVerificationEnabled) {
         this.hostVerificationEnabled = hostVerificationEnabled;
     }
 
     /**
-     * Get a custom hostname verifier that will be used to verify the hostname provided in the server certificate against
-     * the host the client connects to.
-     * <p/>
-     * If the custom hostname verifier is set, the default verification will not be triggered.
+     * Get custom hostname verifier.
+     *
+     * @return user provided hostname verifier instance.
      */
     public HostnameVerifier getHostnameVerifier() {
         return hostnameVerifier;
     }
 
     /**
-     * Set a custom hostname verifier that will be used to verify the hostname provided in the server certificate against
-     * the host the client connects to.
+     * Set custom hostname verifier.
      * <p/>
-     * If the custom hostname verifier is set, the default verification will not be triggered.
+     * When custom {@link HostnameVerifier} instance is registered, it will be used to perform hostname verification,
+     * no matter on the state of hostname verification flag (see {@link #isHostVerificationEnabled()}) and JDK default
+     * hostname verifier won't be used.
      *
-     * @param hostnameVerifier a custom host name verifier.
+     * @param hostnameVerifier custom hostname verifier.
      */
     public void setHostnameVerifier(HostnameVerifier hostnameVerifier) {
         this.hostnameVerifier = hostnameVerifier;
