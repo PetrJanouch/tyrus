@@ -197,21 +197,15 @@ class SslFilter extends Filter {
 
     @Override
     void onConnect() {
-        upstreamFilter.onConnect();
+        getUpstreamFilter().onConnect();
     }
 
     @Override
     void onRead(ByteBuffer networkData) {
-        /**
-         * {@code upstreamFilter == null} means that there is {@link Filter#close()} propagating from the upper layers.
-         */
-        if (upstreamFilter == null) {
-            return;
-        }
 
         // before SSL is started read just passes through
         if (!sslStarted) {
-            upstreamFilter.onRead(networkData);
+            getUpstreamFilter().onRead(networkData);
             return;
         }
         SSLEngineResult.HandshakeStatus hs = sslEngine.getHandshakeStatus();
@@ -241,7 +235,7 @@ class SslFilter extends Filter {
                                 handleSslError(new SSLException("Server host name verification using " + customHostnameVerifier.getClass() + " has failed"));
                             }
 
-                            upstreamFilter.onSslHandshakeCompleted();
+                            getUpstreamFilter().onSslHandshakeCompleted();
                             return;
                         }
                         if (!networkData.hasRemaining() || result.getHandshakeStatus() != SSLEngineResult.HandshakeStatus.NEED_UNWRAP) {
@@ -265,7 +259,7 @@ class SslFilter extends Filter {
                         return;
                     }
                     applicationInputBuffer.flip();
-                    upstreamFilter.onRead(applicationInputBuffer);
+                    getUpstreamFilter().onRead(applicationInputBuffer);
                 } while (networkData.hasRemaining());
             }
         } catch (SSLException e) {
@@ -275,7 +269,7 @@ class SslFilter extends Filter {
 
     @Override
     void onConnectionClosed() {
-        upstreamFilter.onConnectionClosed();
+        getUpstreamFilter().onConnectionClosed();
     }
 
     private void doHandshakeStep(final Filter filter) {
@@ -340,12 +334,12 @@ class SslFilter extends Filter {
     }
 
     private void handleSslError(Throwable t) {
-        upstreamFilter.onError(t);
+        getUpstreamFilter().onError(t);
     }
 
     @Override
     void onError(Throwable t) {
-        upstreamFilter.onError(t);
+        getUpstreamFilter().onError(t);
     }
 
     @Override
@@ -357,5 +351,14 @@ class SslFilter extends Filter {
         } catch (SSLException e) {
             handleSslError(e);
         }
+    }
+
+    // protection against NPE - upstream filter is set to null by close method
+    private Filter getUpstreamFilter() {
+        if (upstreamFilter != null) {
+            return upstreamFilter;
+        }
+
+        return new Filter();
     }
 }

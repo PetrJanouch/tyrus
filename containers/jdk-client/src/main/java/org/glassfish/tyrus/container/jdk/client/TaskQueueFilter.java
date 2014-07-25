@@ -137,35 +137,37 @@ class TaskQueueFilter extends Filter {
 
     @Override
     void onConnect() {
-        upstreamFilter.onConnect();
+        getUpstreamFilter().onConnect();
     }
 
     @Override
     void onRead(ByteBuffer buffer) {
-        /**
-         * {@code upstreamFilter == null} means that there is {@link Filter#close()} propagating from the upper layers.
-         */
-        if (upstreamFilter == null) {
-            return;
-        }
-
-        upstreamFilter.onRead(buffer);
+        getUpstreamFilter().onRead(buffer);
     }
 
     @Override
     void onConnectionClosed() {
-        upstreamFilter.onConnectionClosed();
+        getUpstreamFilter().onConnectionClosed();
     }
 
     @Override
     void onSslHandshakeCompleted() {
-        upstreamFilter.onSslHandshakeCompleted();
+        getUpstreamFilter().onSslHandshakeCompleted();
         processTask();
     }
 
     @Override
     void onError(Throwable t) {
-        upstreamFilter.onError(t);
+        getUpstreamFilter().onError(t);
+    }
+
+    // protection against NPE - upstream filter is set to null by close method
+    private Filter getUpstreamFilter() {
+        if (upstreamFilter != null) {
+            return upstreamFilter;
+        }
+
+        return new Filter();
     }
 
     /**

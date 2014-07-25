@@ -157,7 +157,7 @@ class TransportFilter extends Filter {
 
     @Override
     void startSsl() {
-        upstreamFilter.onSslHandshakeCompleted();
+        getUpstreamFilter().onSslHandshakeCompleted();
     }
 
     @Override
@@ -265,22 +265,18 @@ class TransportFilter extends Filter {
         socketChannel.read(inputBuffer, null, new CompletionHandler<Integer, Void>() {
             @Override
             public void completed(Integer bytesRead, Void result) {
-                // upstreamFilter might have just be set to null by close method
-                if (upstreamFilter == null) {
-                    return;
-                }
 
                 // connection closed by the server
                 if (bytesRead == -1) {
                     // close will set TransportFilter.this.upstreamFilter to null
-                    Filter upstreamFilter = TransportFilter.this.upstreamFilter;
+                    Filter upstreamFilter = getUpstreamFilter();
                     close();
                     upstreamFilter.onConnectionClosed();
                     return;
                 }
 
                 inputBuffer.flip();
-                TransportFilter.this.upstreamFilter.onRead(inputBuffer);
+                getUpstreamFilter().onRead(inputBuffer);
                 inputBuffer.compact();
                 read(inputBuffer);
             }
@@ -295,12 +291,7 @@ class TransportFilter extends Filter {
                     return;
                 }
 
-                // upstreamFilter might have just be set to null by close method
-                if (upstreamFilter == null) {
-                    return;
-                }
-
-                upstreamFilter.onError(exc);
+                getUpstreamFilter().onError(exc);
             }
         });
     }
@@ -319,6 +310,15 @@ class TransportFilter extends Filter {
                 }
             }
         }, currentContainerIdleTimeout, TimeUnit.SECONDS);
+    }
+
+    // protection against NPE - upstream filter is set to null by close method
+    private Filter getUpstreamFilter() {
+        if (upstreamFilter != null) {
+            return upstreamFilter;
+        }
+
+        return new Filter();
     }
 
     /**
