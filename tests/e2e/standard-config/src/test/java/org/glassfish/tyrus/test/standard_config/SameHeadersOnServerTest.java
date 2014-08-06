@@ -47,124 +47,35 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.net.URI;
 import java.nio.charset.Charset;
-import java.security.MessageDigest;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import javax.websocket.ClientEndpointConfig;
-import javax.websocket.Endpoint;
-import javax.websocket.EndpointConfig;
 import javax.websocket.HandshakeResponse;
-import javax.websocket.Session;
 import javax.websocket.server.HandshakeRequest;
 import javax.websocket.server.ServerEndpoint;
 import javax.websocket.server.ServerEndpointConfig;
 
-import org.glassfish.tyrus.client.ClientManager;
-import org.glassfish.tyrus.core.Base64Utils;
 import org.glassfish.tyrus.server.Server;
 import org.glassfish.tyrus.spi.UpgradeRequest;
-import org.glassfish.tyrus.spi.UpgradeResponse;
 import org.glassfish.tyrus.test.tools.TestContainer;
-
-import org.glassfish.grizzly.http.server.HttpHandler;
-import org.glassfish.grizzly.http.server.HttpServer;
-import org.glassfish.grizzly.http.server.Request;
-import org.glassfish.grizzly.http.server.Response;
 
 import org.junit.Test;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * Tests situation when a handshake request or response contains the same header twice with different values.
+ * Tests a situation when a handshake request contains the same header twice with different values.
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
-public class SameHeaderNamesTest extends TestContainer {
+public class SameHeadersOnServerTest extends TestContainer {
 
     private static final String HEADER_KEY = "my-header";
     private static final String HEADER_VALUE_1 = "my-header-value-1";
     private static final String HEADER_VALUE_2 = "my-header-value-2";
-
-    @Test
-    public void testSameHeaderNamesInHandshakeResponse() {
-        if (System.getProperty("tyrus.test.host") != null) {
-            return;
-        }
-
-        HttpServer server = null;
-        try {
-            server = getHandshakeServer();
-
-            final CountDownLatch responseLatch = new CountDownLatch(1);
-
-            ClientManager client = createClient();
-            client.connectToServer(new Endpoint() {
-                @Override
-                public void onOpen(Session session, EndpointConfig endpointConfig) {
-                    // do nothing
-                }
-            }, ClientEndpointConfig.Builder.create().configurator(new ClientEndpointConfig.Configurator() {
-                @Override
-                public void afterResponse(HandshakeResponse hr) {
-                    List<String> headers = hr.getHeaders().get(HEADER_KEY);
-                    System.out.println("Received headers: " + headers);
-
-                    if (headers.contains(HEADER_VALUE_1) && headers.contains(HEADER_VALUE_2)) {
-                        responseLatch.countDown();
-                    }
-                }
-            }).build(), URI.create("ws://localhost:8025/testSameHeader"));
-
-            assertTrue(responseLatch.await(5, TimeUnit.SECONDS));
-        } catch (Exception e) {
-            e.printStackTrace();
-            fail();
-        } finally {
-            if (server != null) {
-                server.shutdown();
-            }
-        }
-    }
-
-    private HttpServer getHandshakeServer() throws IOException {
-        HttpServer server = HttpServer.createSimpleServer("/testSameHeader", getHost(), getPort());
-        server.getServerConfiguration().addHttpHandler(
-                new HttpHandler() {
-                    public void service(Request request, Response response) throws Exception {
-                        response.setStatus(101);
-
-                        response.addHeader(UpgradeRequest.CONNECTION, UpgradeRequest.UPGRADE);
-                        response.addHeader(UpgradeRequest.UPGRADE, UpgradeRequest.WEBSOCKET);
-
-                        String secKey = request.getHeader(HandshakeRequest.SEC_WEBSOCKET_KEY);
-                        String key = secKey + UpgradeRequest.SERVER_KEY_HASH;
-
-                        MessageDigest instance;
-                        try {
-                            instance = MessageDigest.getInstance("SHA-1");
-                            instance.update(key.getBytes("UTF-8"));
-                            final byte[] digest = instance.digest();
-                            String responseKey = Base64Utils.encodeToString(digest, false);
-
-                            response.addHeader(UpgradeResponse.SEC_WEBSOCKET_ACCEPT, responseKey);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-
-                        response.addHeader(HEADER_KEY, HEADER_VALUE_1);
-                        response.addHeader(HEADER_KEY, HEADER_VALUE_2);
-                    }
-                }
-        );
-
-        server.start();
-        return server;
-    }
 
     @Test
     public void testSameHeaderNamesInHandshakeRequest() {
@@ -174,7 +85,8 @@ public class SameHeaderNamesTest extends TestContainer {
             final CountDownLatch responseLatch = new CountDownLatch(1);
 
             StringBuilder handshakeRequest = new StringBuilder();
-            handshakeRequest.append("GET /e2e-test/sameHeadersEndpoint HTTP/1.1\r\n");
+            URI serverEndpointUri = getURI(AnnotatedServerEndpoint.class);
+            handshakeRequest.append("GET " + serverEndpointUri.getPath() + " HTTP/1.1\r\n");
             appendHeader(handshakeRequest, "Host", getHost() + ":" + getPort());
             appendHeader(handshakeRequest, UpgradeRequest.CONNECTION, UpgradeRequest.UPGRADE);
             appendHeader(handshakeRequest, UpgradeRequest.UPGRADE, UpgradeRequest.WEBSOCKET);
@@ -210,6 +122,7 @@ public class SameHeaderNamesTest extends TestContainer {
 
                             if (responseLine.contains("101")) {
                                 responseLatch.countDown();
+                                break;
                             }
                         }
                     } catch (Exception e) {
