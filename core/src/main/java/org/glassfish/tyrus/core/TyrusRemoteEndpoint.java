@@ -49,6 +49,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.websocket.CloseReason;
@@ -92,6 +93,11 @@ public abstract class TyrusRemoteEndpoint implements javax.websocket.RemoteEndpo
         @Override
         public void sendText(String text) throws IOException {
             checkNotNull(text, "text");
+
+            if (LOGGER.isLoggable(Level.FINEST)) {
+                LOGGER.log(Level.FINEST, "Session " + session.getId() + ": Sending text message: " + text);
+            }
+
             final Future<?> future = webSocket.sendText(text);
             try {
                 processFuture(future);
@@ -103,6 +109,11 @@ public abstract class TyrusRemoteEndpoint implements javax.websocket.RemoteEndpo
         @Override
         public void sendBinary(ByteBuffer data) throws IOException {
             checkNotNull(data, "data");
+
+            if (LOGGER.isLoggable(Level.FINEST)) {
+                LOGGER.log(Level.FINEST, "Session " + session.getId() + ": Sending binary message");
+            }
+
             final Future<?> future = webSocket.sendBinary(Utils.getRemainingArray(data));
             try {
                 processFuture(future);
@@ -114,6 +125,11 @@ public abstract class TyrusRemoteEndpoint implements javax.websocket.RemoteEndpo
         @Override
         public void sendText(String partialMessage, boolean isLast) throws IOException {
             checkNotNull(partialMessage, "partialMessage");
+
+            if (LOGGER.isLoggable(Level.FINEST)) {
+                LOGGER.log(Level.FINEST, "Session " + session.getId() + ": Sending partial text message: " + partialMessage);
+            }
+
             final Future<?> future = webSocket.sendText(partialMessage, isLast);
             try {
                 processFuture(future);
@@ -125,6 +141,11 @@ public abstract class TyrusRemoteEndpoint implements javax.websocket.RemoteEndpo
         @Override
         public void sendBinary(ByteBuffer partialByte, boolean isLast) throws IOException {
             checkNotNull(partialByte, "partialByte");
+
+            if (LOGGER.isLoggable(Level.FINEST)) {
+                LOGGER.log(Level.FINEST, "Session " + session.getId() + ": Sending partial binary message");
+            }
+
             final Future<?> future = webSocket.sendBinary(Utils.getRemainingArray(partialByte), isLast);
             try {
                 processFuture(future);

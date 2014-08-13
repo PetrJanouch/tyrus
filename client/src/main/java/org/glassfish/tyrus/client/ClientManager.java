@@ -73,6 +73,7 @@ import org.glassfish.tyrus.core.ReflectionHelper;
 import org.glassfish.tyrus.core.TyrusEndpointWrapper;
 import org.glassfish.tyrus.core.TyrusFuture;
 import org.glassfish.tyrus.core.TyrusSession;
+import org.glassfish.tyrus.core.UpgradeDebugContext;
 import org.glassfish.tyrus.core.Utils;
 import org.glassfish.tyrus.core.monitoring.EndpointEventListener;
 import org.glassfish.tyrus.spi.ClientContainer;
@@ -510,6 +511,7 @@ public class ClientManager extends BaseContainer implements WebSocketContainer {
 
                         do {
                             final CountDownLatch responseLatch = new CountDownLatch(1);
+                            final UpgradeDebugContext upgradeDebugContext = new UpgradeDebugContext();
 
                             final ClientManagerHandshakeListener listener = new ClientManagerHandshakeListener() {
 
@@ -519,12 +521,14 @@ public class ClientManager extends BaseContainer implements WebSocketContainer {
                                 @Override
                                 public void onSessionCreated(Session session) {
                                     this.session = session;
+                                    upgradeDebugContext.writeToLog();
                                     responseLatch.countDown();
                                 }
 
                                 @Override
                                 public void onError(Throwable exception) {
                                     throwable = exception;
+                                    upgradeDebugContext.writeToLog();
                                     responseLatch.countDown();
                                 }
 
@@ -566,7 +570,7 @@ public class ClientManager extends BaseContainer implements WebSocketContainer {
                                     throw new DeploymentException("Invalid URI.", e);
                                 }
 
-                                TyrusClientEngine clientEngine = new TyrusClientEngine(clientEndpoint, listener, copiedProperties, uri);
+                                TyrusClientEngine clientEngine = new TyrusClientEngine(clientEndpoint, listener, copiedProperties, uri, upgradeDebugContext);
 
                                 container.openClientSocket(config, copiedProperties, clientEngine);
 

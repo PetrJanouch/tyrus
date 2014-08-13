@@ -133,7 +133,7 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
     public static final String WSADL_SUPPORT = "org.glassfish.tyrus.server.wsadl";
 
     private static final int BUFFER_STEP_SIZE = 256;
-    private static final Logger LOGGER = Logger.getLogger(UpgradeRequest.WEBSOCKET);
+    private static final Logger LOGGER = Logger.getLogger(TyrusWebSocketEngine.class.getName());
 
     private static final UpgradeInfo NOT_APPLICABLE_UPGRADE_INFO = new NoConnectionUpgradeInfo(UpgradeStatus.NOT_APPLICABLE);
     private static final UpgradeInfo HANDSHAKE_FAILED_UPGRADE_INFO = new NoConnectionUpgradeInfo(UpgradeStatus.HANDSHAKE_FAILED);
@@ -185,8 +185,14 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
             // create dummy instance in order not to have to check null pointer
             this.applicationEventListener = ApplicationEventListener.NO_OP;
         } else {
+            LOGGER.config("Application event listener " + applicationEventListener.getClass().getName() + " registered");
             this.applicationEventListener = applicationEventListener;
         }
+
+        LOGGER.config("Incoming buffer size: " + incomingBufferSize);
+        LOGGER.config("Max sessions per app: " + maxSessionsPerApp);
+        LOGGER.config("Max sessions per remote address: " + maxSessionsPerRemoteAddr);
+
         this.sessionListener = maxSessionsPerApp == null && maxSessionsPerRemoteAddr == null ?
                 NO_OP_SESSION_LISTENER : new TyrusEndpointWrapper.SessionListener() {
             // Implementation of {@link org.glassfish.tyrus.core.TyrusEndpointWrapper.SessionListener} counting
@@ -262,14 +268,14 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
                 Arrays.asList(Version.getSupportedWireProtocolVersions()));
     }
 
-    TyrusEndpointWrapper getEndpointWrapper(UpgradeRequest request) throws HandshakeException {
+    TyrusEndpointWrapper getEndpointWrapper(UpgradeRequest request, UpgradeDebugContext upgradeDebugContext) throws HandshakeException {
         if (endpointWrappers.isEmpty()) {
             return null;
         }
 
         final String requestPath = request.getRequestUri();
 
-        for (Match m : Match.getAllMatches(requestPath, endpointWrappers)) {
+        for (Match m : Match.getAllMatches(requestPath, endpointWrappers, upgradeDebugContext)) {
             final TyrusEndpointWrapper endpointWrapper = m.getEndpointWrapper();
 
             for (String name : m.getParameterNames()) {
@@ -277,6 +283,7 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
             }
 
             if (endpointWrapper.upgrade(request)) {
+                upgradeDebugContext.appendMessage(Level.FINE, "Endpoint selected as a match to the handshake URI: " + endpointWrapper);
                 return endpointWrapper;
             }
         }
@@ -287,9 +294,12 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
     @Override
     public UpgradeInfo upgrade(final UpgradeRequest request, final UpgradeResponse response) {
 
+        UpgradeDebugContext upgradeDebugContext = new UpgradeDebugContext();
+        upgradeDebugContext.appendMessage(Level.FINE, "Received handshake request: \n" + Utils.stringifyUpgradeRequest(request));
+
         final TyrusEndpointWrapper endpointWrapper;
         try {
-            endpointWrapper = getEndpointWrapper(request);
+            endpointWrapper = getEndpointWrapper(request, upgradeDebugContext);
         } catch (HandshakeException e) {
             return handleHandshakeException(e, response);
         }
@@ -298,6 +308,9 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
             final ProtocolHandler protocolHandler = loadHandler(request);
             if (protocolHandler == null) {
                 handleUnsupportedVersion(request, response);
+                upgradeDebugContext.appendMessage(Level.FINE, "Upgrade request contains unsupported version of Websocket protocol");
+                upgradeDebugContext.appendMessage(Level.FINE, "Sending handshake response: \n" + Utils.stringifyUpgradeResponse(response));
+                upgradeDebugContext.writeToLog();
                 return HANDSHAKE_FAILED_UPGRADE_INFO;
             }
 
@@ -317,16 +330,42 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
                 return handleHandshakeException(e, response);
             }
 
+            logExtensionsAndSubprotocol(protocolHandler, upgradeDebugContext);
+
             if (clusterContext != null && request.getHeaders().get(UpgradeRequest.CLUSTER_CONNECTION_ID_HEADER) == null) {
                 // TODO: we might need to introduce some property to check whether we should put this header into the response.
-                response.getHeaders().put(UpgradeRequest.CLUSTER_CONNECTION_ID_HEADER, Collections.singletonList(clusterContext.createConnectionId()));
+                String connectionId = clusterContext.createConnectionId();
+                response.getHeaders().put(UpgradeRequest.CLUSTER_CONNECTION_ID_HEADER, Collections.singletonList(connectionId));
+
+                upgradeDebugContext.appendMessage(Level.FINE, "Connection ID: " + connectionId);
             }
 
-            return new SuccessfulUpgradeInfo(endpointWrapper, protocolHandler, incomingBufferSize, request, response, extensionContext);
+            upgradeDebugContext.appendMessage(Level.FINE, "Sending handshake response: \n" + Utils.stringifyUpgradeResponse(response) + "\n");
+            return new SuccessfulUpgradeInfo(endpointWrapper, protocolHandler, incomingBufferSize, request, response, extensionContext, upgradeDebugContext);
         }
 
         response.setStatus(500);
+        upgradeDebugContext.appendMessage(Level.FINE, "No endpoint matched to the request URI");
+        upgradeDebugContext.writeToLog();
         return NOT_APPLICABLE_UPGRADE_INFO;
+    }
+
+    private void logExtensionsAndSubprotocol(ProtocolHandler protocolHandler, UpgradeDebugContext upgradeDebugContext) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Using negotiated extensions: [");
+        boolean isFirst = true;
+        for (Extension extension : protocolHandler.getExtensions()) {
+            if (isFirst) {
+                isFirst = false;
+            } else {
+                sb.append(", ");
+            }
+            sb.append(extension.getName());
+        }
+        sb.append("]");
+
+        upgradeDebugContext.appendMessage(Level.FINE, "Using negotiated extensions: " + sb.toString());
+        upgradeDebugContext.appendMessage(Level.FINE, "Using negotiated subprotocol: " + protocolHandler.getSubProtocol());
     }
 
     private UpgradeInfo handleHandshakeException(HandshakeException handshakeException, UpgradeResponse response) {
@@ -431,6 +470,7 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
      */
     private void register(TyrusEndpointWrapper endpointWrapper) throws DeploymentException {
         checkPath(endpointWrapper);
+        LOGGER.log(Level.CONFIG, "Registered endpoint: " + endpointWrapper);
         endpointWrappers.add(endpointWrapper);
     }
 
@@ -545,15 +585,17 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
         private final UpgradeRequest upgradeRequest;
         private final UpgradeResponse upgradeResponse;
         private final ExtendedExtension.ExtensionContext extensionContext;
+        private final UpgradeDebugContext upgradeDebugContext;
 
         SuccessfulUpgradeInfo(TyrusEndpointWrapper endpointWrapper, ProtocolHandler protocolHandler, int incomingBufferSize,
-                              UpgradeRequest upgradeRequest, UpgradeResponse upgradeResponse, ExtendedExtension.ExtensionContext extensionContext) {
+                              UpgradeRequest upgradeRequest, UpgradeResponse upgradeResponse, ExtendedExtension.ExtensionContext extensionContext, UpgradeDebugContext upgradeDebugContext) {
             this.endpointWrapper = endpointWrapper;
             this.protocolHandler = protocolHandler;
             this.incomingBufferSize = incomingBufferSize;
             this.upgradeRequest = upgradeRequest;
             this.upgradeResponse = upgradeResponse;
             this.extensionContext = extensionContext;
+            this.upgradeDebugContext = upgradeDebugContext;
         }
 
         @Override
@@ -563,7 +605,9 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
 
         @Override
         public Connection createConnection(Writer writer, Connection.CloseListener closeListener) {
-            return new TyrusConnection(endpointWrapper, protocolHandler, incomingBufferSize, writer, closeListener, upgradeRequest, upgradeResponse, extensionContext);
+            TyrusConnection tyrusConnection = new TyrusConnection(endpointWrapper, protocolHandler, incomingBufferSize, writer, closeListener, upgradeRequest, upgradeResponse, extensionContext, upgradeDebugContext);
+            upgradeDebugContext.writeToLog();
+            return tyrusConnection;
         }
     }
 
@@ -604,7 +648,7 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
         private final List<Extension> extensions;
 
         TyrusConnection(TyrusEndpointWrapper endpointWrapper, ProtocolHandler protocolHandler, int incomingBufferSize, Writer writer, CloseListener closeListener,
-                        UpgradeRequest upgradeRequest, UpgradeResponse upgradeResponse, ExtendedExtension.ExtensionContext extensionContext) {
+                        UpgradeRequest upgradeRequest, UpgradeResponse upgradeResponse, ExtendedExtension.ExtensionContext extensionContext, UpgradeDebugContext upgradeDebugContext) {
             protocolHandler.setWriter(writer);
             extensions = protocolHandler.getExtensions();
             this.socket = endpointWrapper.createSocket(protocolHandler);
@@ -618,7 +662,7 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
                 connectionId = upgradeResponse.getFirstHeaderValue(UpgradeRequest.CLUSTER_CONNECTION_ID_HEADER);
             }
 
-            this.socket.onConnect(upgradeRequest, protocolHandler.getSubProtocol(), extensions, connectionId);
+            this.socket.onConnect(upgradeRequest, protocolHandler.getSubProtocol(), extensions, connectionId, upgradeDebugContext);
 
             this.readHandler = new TyrusReadHandler(protocolHandler, socket, endpointWrapper, incomingBufferSize, extensionContext);
             this.writer = writer;

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2013 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013-2014 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -112,15 +112,18 @@ public class TyrusServerConfiguration implements ServerApplicationConfig {
             }
 
             if (ServerApplicationConfig.class.isAssignableFrom(cls)) {
+                LOGGER.config("Found server application config: " + cls.getName());
                 ServerApplicationConfig config = (ServerApplicationConfig) ReflectionHelper.getInstance(cls, errorCollector);
                 configurations.add(config);
             }
 
             if (Endpoint.class.isAssignableFrom(cls)) {
+                LOGGER.config("Found endpoint: " + cls.getName());
                 scannedProgramatics.add((Class<? extends Endpoint>) cls);
             }
 
             if (cls.isAnnotationPresent(ServerEndpoint.class)) {
+                LOGGER.config("Found annotated endpoint: " + cls.getName());
                 scannedAnnotateds.add(cls);
             }
         }
@@ -137,13 +140,15 @@ public class TyrusServerConfiguration implements ServerApplicationConfig {
 
             // or add any @ServerEndpoint annotated class
             if (c.isAnnotationPresent(ServerEndpoint.class)) {
+                LOGGER.config("Found annotated endpoint: " + c.getName());
                 annotatedClasses.add(c);
 
-            } else if(ServerApplicationConfig.class.isAssignableFrom(c)) {
+            } else if (ServerApplicationConfig.class.isAssignableFrom(c)) {
+                LOGGER.config("Found server application config: " + c.getName());
                 ServerApplicationConfig config = (ServerApplicationConfig) ReflectionHelper.getInstance(c, errorCollector);
                 configurations.add(config);
 
-            // nothing else is expected/supported.
+                // nothing else is expected/supported.
             } else {
                 errorCollector.addException(new DeploymentException(String.format("Class %s is not ServerApplicationConfig descendant nor has @ServerEndpoint annotation.", c.getName())));
             }

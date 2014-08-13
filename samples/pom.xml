@@ -65,6 +65,7 @@
         <module>echo-https</module>
         <module>programmatic-echo</module>
         <module>simplelife</module>
+        <module>debug</module>
         <!--<module>trading</module>-->
     </modules>
 

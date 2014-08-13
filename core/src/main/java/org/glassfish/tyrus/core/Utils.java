@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -53,6 +54,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.glassfish.tyrus.core.l10n.LocalizationMessages;
+import org.glassfish.tyrus.spi.UpgradeRequest;
+import org.glassfish.tyrus.spi.UpgradeResponse;
 
 /**
  * Utility methods shared among Tyrus modules.
@@ -461,5 +464,68 @@ public class Utils {
                 return formatAnsiCAsc.parse(stringValue);
             }
         }
+    }
+
+    private static final List<String> FILTERED_HEADERS = Arrays.asList(UpgradeRequest.AUTHORIZATION);
+
+    /**
+     * Converts upgrade request to a HTTP-formatted string.
+     *
+     * @param upgradeRequest upgrade request to be formatted.
+     * @return stringified upgrade request.
+     */
+    public static String stringifyUpgradeRequest(UpgradeRequest upgradeRequest) {
+        if (upgradeRequest == null) {
+            return null;
+        }
+        StringBuilder request = new StringBuilder();
+        request.append("GET ");
+        request.append(upgradeRequest.getRequestUri());
+        request.append(" HTTP/1.1\r\n");
+        appendHeaders(request, upgradeRequest.getHeaders());
+        return request.toString();
+    }
+
+    /**
+     * Converts upgrade response to a HTTP-formatted string.
+     *
+     * @param upgradeResponse upgrade request to be formatted.
+     * @return stringified upgrade request.
+     */
+    public static String stringifyUpgradeResponse(UpgradeResponse upgradeResponse) {
+        if (upgradeResponse == null) {
+            return null;
+        }
+        StringBuilder request = new StringBuilder();
+        request.append("HTTP/1.1 ");
+        request.append(upgradeResponse.getStatus());
+        request.append("\n");
+        appendHeaders(request, upgradeResponse.getHeaders());
+        return request.toString();
+    }
+
+    private static void appendHeaders(StringBuilder message, Map<String, List<String>> headers) {
+        for (Map.Entry<String, List<String>> header : headers.entrySet()) {
+            StringBuilder value = new StringBuilder();
+            for (String valuePart : header.getValue()) {
+                if (value.length() != 0) {
+                    value.append(", ");
+                }
+                value.append(valuePart);
+            }
+            appendHeader(message, header.getKey(), value.toString());
+        }
+    }
+
+    private static void appendHeader(StringBuilder message, String key, String value) {
+        message.append(key);
+        message.append(":");
+        for (String filteredHeader : FILTERED_HEADERS) {
+            if (filteredHeader.equals(key)) {
+                value = "*****";
+            }
+        }
+        message.append(value);
+        message.append("\n");
     }
 }

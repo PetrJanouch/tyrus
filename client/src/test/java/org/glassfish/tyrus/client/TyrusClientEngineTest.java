@@ -61,6 +61,7 @@ import org.glassfish.tyrus.client.auth.Credentials;
 import org.glassfish.tyrus.core.Base64Utils;
 import org.glassfish.tyrus.core.HandshakeException;
 import org.glassfish.tyrus.core.TyrusEndpointWrapper;
+import org.glassfish.tyrus.core.UpgradeDebugContext;
 import org.glassfish.tyrus.core.l10n.LocalizationMessages;
 import org.glassfish.tyrus.spi.ClientEngine;
 import org.glassfish.tyrus.spi.UpgradeRequest;
@@ -482,7 +483,7 @@ public class TyrusClientEngineTest {
             public void onError(Throwable exception) {
 
             }
-        }, properties, URI.create(requestUri));
+        }, properties, URI.create(requestUri), new UpgradeDebugContext());
     }
 
     private static class TestEndpoint extends Endpoint {

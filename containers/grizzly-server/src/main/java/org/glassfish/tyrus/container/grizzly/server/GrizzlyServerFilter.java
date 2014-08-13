@@ -95,7 +95,7 @@ import org.glassfish.grizzly.memory.ByteBufferArray;
  */
 class GrizzlyServerFilter extends BaseFilter {
 
-    private static final Logger logger = Grizzly.logger(GrizzlyServerFilter.class);
+    private static final Logger LOGGER = Grizzly.logger(GrizzlyServerFilter.class);
 
     private static final Attribute<org.glassfish.tyrus.spi.Connection> TYRUS_CONNECTION = Grizzly.DEFAULT_ATTRIBUTE_BUILDER
             .createAttribute(GrizzlyServerFilter.class.getName() + ".Connection");
@@ -159,8 +159,8 @@ class GrizzlyServerFilter extends BaseFilter {
 
         final org.glassfish.tyrus.spi.Connection tyrusConnection = getConnection(ctx);
 
-        if (logger.isLoggable(Level.FINE)) {
-            logger.log(Level.FINE, "handleRead websocket: {0} content-size={1} headers=\n{2}",
+        if (LOGGER.isLoggable(Level.FINEST)) {
+            LOGGER.log(Level.FINEST, "handleRead websocket: {0} content-size={1} headers=\n{2}",
                     new Object[]{tyrusConnection, message.getContent().remaining(), message.getHttpHeader()});
         }
 

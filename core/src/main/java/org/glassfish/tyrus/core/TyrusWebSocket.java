@@ -134,11 +134,11 @@ public class TyrusWebSocket {
      *
      * @param upgradeRequest request associated with this socket.
      */
-    public void onConnect(UpgradeRequest upgradeRequest, String subProtocol, List<Extension> extensions, String connectionId) {
+    public void onConnect(UpgradeRequest upgradeRequest, String subProtocol, List<Extension> extensions, String connectionId, UpgradeDebugContext upgradeDebugContext) {
         state.set(State.CONNECTED);
 
         if (endpointWrapper != null) {
-            endpointWrapper.onConnect(this, upgradeRequest, subProtocol, extensions, connectionId);
+            endpointWrapper.onConnect(this, upgradeRequest, subProtocol, extensions, connectionId, upgradeDebugContext);
         }
 
         onConnectLatch.countDown();
