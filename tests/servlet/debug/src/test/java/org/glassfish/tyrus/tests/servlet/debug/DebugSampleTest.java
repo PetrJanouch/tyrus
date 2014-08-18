@@ -38,24 +38,27 @@
  * holder.
  */
 
-package org.glassfish.tyrus.sample.debug;
+package org.glassfish.tyrus.tests.servlet.debug;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.ConsoleHandler;
 import java.util.logging.Formatter;
-import java.util.logging.Level;
+import java.util.logging.LogManager;
 import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 
 import javax.websocket.ClientEndpointConfig;
 import javax.websocket.DeploymentException;
 import javax.websocket.Endpoint;
 import javax.websocket.EndpointConfig;
+import javax.websocket.HandshakeResponse;
 import javax.websocket.MessageHandler;
 import javax.websocket.OnMessage;
 import javax.websocket.Session;
@@ -66,12 +69,8 @@ import org.glassfish.tyrus.client.ClientManager;
 import org.glassfish.tyrus.client.ClientProperties;
 import org.glassfish.tyrus.client.auth.Credentials;
 import org.glassfish.tyrus.core.Base64Utils;
-import org.glassfish.tyrus.core.TyrusEndpointWrapper;
-import org.glassfish.tyrus.core.TyrusRemoteEndpoint;
 import org.glassfish.tyrus.core.TyrusWebSocketEngine;
-import org.glassfish.tyrus.core.UpgradeDebugContext;
 import org.glassfish.tyrus.server.Server;
-import org.glassfish.tyrus.server.TyrusServerConfiguration;
 import org.glassfish.tyrus.spi.UpgradeRequest;
 import org.glassfish.tyrus.spi.UpgradeResponse;
 import org.glassfish.tyrus.test.tools.TestContainer;
@@ -82,23 +81,26 @@ import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
 
 import org.junit.Test;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
-public class DebugTest extends TestContainer {
+public class DebugSampleTest extends TestContainer {
 
-    public DebugTest() {
-        setContextPath("/sample-debug");
+    String loggingConfigPath = new File(DebugSampleTest.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getPath();
+
+    public DebugSampleTest() {
+        setContextPath("/samples-debug");
+
+        System.setProperty("java.util.logging.config.file", loggingConfigPath + "/logging.properties");
     }
 
     @Test
     public void testMatch() throws DeploymentException, InterruptedException, IOException {
+
         final Server server = startServer(Endpoint1.class, Endpoint2.class, Endpoint3.class, Endpoint4.class, Endpoint5.class, Endpoint6.class);
-        setLoggerLevel(UpgradeDebugContext.class.getName(), Level.FINER);
         final CountDownLatch onOpenLatch = new CountDownLatch(1);
 
         try {
@@ -112,8 +114,9 @@ public class DebugTest extends TestContainer {
 
             }, ClientEndpointConfig.Builder.create().build(), getURI("/endpoint/a/b"));
 
-            assertTrue(onOpenLatch.await(1, TimeUnit.SECONDS));
-            Thread.sleep(3000);
+            assertTrue(onOpenLatch.await(5, TimeUnit.SECONDS));
+            // wait for all messages to be logged
+            Thread.sleep(1000);
         } catch (Exception e) {
             e.printStackTrace();
             fail();
@@ -124,16 +127,8 @@ public class DebugTest extends TestContainer {
 
     @Test
     public void test404() throws DeploymentException, InterruptedException, IOException {
-        try {
-            // initialize logger so the level can be set
-            new TyrusServerConfiguration(null, null);
-        } catch (Exception e) {
-            // do nothing
-        }
 
-        setLoggerLevel(TyrusServerConfiguration.class.getName(), Level.FINE);
         final Server server = startServer(Endpoint1.class, Endpoint2.class, Endpoint3.class, Endpoint4.class, Endpoint5.class, Endpoint6.class);
-        setLoggerLevel(UpgradeDebugContext.class.getName(), Level.FINER);
         final CountDownLatch onOpenLatch = new CountDownLatch(1);
 
         try {
@@ -147,29 +142,20 @@ public class DebugTest extends TestContainer {
 
             }, ClientEndpointConfig.Builder.create().build(), getURI("/endpoint/b"));
 
-            assertFalse(onOpenLatch.await(1, TimeUnit.SECONDS));
             fail();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            // do nothing
         } finally {
-            Thread.sleep(3000);
             stopServer(server);
+            // wait for all messages to be logged
+            Thread.sleep(1000);
         }
     }
 
     @Test
     public void testDeploy() throws DeploymentException, InterruptedException, IOException {
-        try {
-            // initialize logger so the level can be set
-            new TyrusServerConfiguration(null, null);
-            TyrusWebSocketEngine.builder(null).build();
-        } catch (Exception e) {
-            // do nothing
-        }
 
-        setLoggerLevel(TyrusServerConfiguration.class.getName(), Level.FINE);
-        setLoggerLevel(TyrusWebSocketEngine.class.getName(), Level.FINE);
         final Server server = startServer(Endpoint1.class, Endpoint2.class, Endpoint3.class, Endpoint4.class, Endpoint5.class, Endpoint6.class);
         final CountDownLatch onOpenLatch = new CountDownLatch(1);
 
@@ -184,18 +170,23 @@ public class DebugTest extends TestContainer {
 
             }, ClientEndpointConfig.Builder.create().build(), getURI("/endpoint/a/b"));
 
-            assertTrue(onOpenLatch.await(1, TimeUnit.SECONDS));
-            Thread.sleep(3000);
+            assertTrue(onOpenLatch.await(3, TimeUnit.SECONDS));
         } catch (Exception e) {
             e.printStackTrace();
             fail();
         } finally {
             stopServer(server);
+            // wait for all messages to be logged
+            Thread.sleep(1000);
         }
     }
 
     @Test
     public void testHttpLoggingConfiguration() throws DeploymentException, InterruptedException, IOException {
+        System.setProperty("java.util.logging.config.file", loggingConfigPath + "/emptyLogging.properties");
+        LogManager.getLogManager().readConfiguration();
+
+
         final Server server = startServer(Endpoint1.class, Endpoint2.class, Endpoint3.class, Endpoint4.class, Endpoint5.class, Endpoint6.class);
         final CountDownLatch onOpenLatch = new CountDownLatch(1);
 
@@ -211,13 +202,16 @@ public class DebugTest extends TestContainer {
 
             }, ClientEndpointConfig.Builder.create().build(), getURI("/endpoint/a/b"));
 
-            assertTrue(onOpenLatch.await(1, TimeUnit.SECONDS));
-            Thread.sleep(3000);
+            assertTrue(onOpenLatch.await(3, TimeUnit.SECONDS));
         } catch (Exception e) {
             e.printStackTrace();
             fail();
         } finally {
             stopServer(server);
+            // wait for all messages to be logged
+            Thread.sleep(1000);
+            System.setProperty("java.util.logging.config.file", loggingConfigPath + "/logging.properties");
+            LogManager.getLogManager().readConfiguration();
         }
     }
 
@@ -228,7 +222,6 @@ public class DebugTest extends TestContainer {
         server.start();
         try {
             final ClientManager client = createClient();
-            setLoggerLevel(UpgradeDebugContext.class.getName(), Level.FINE);
             client.getProperties().put(ClientProperties.CREDENTIALS, new Credentials("Petr", "My secret password"));
 
             client.connectToServer(new Endpoint() {
@@ -244,15 +237,15 @@ public class DebugTest extends TestContainer {
             e.printStackTrace();
             fail();
         } finally {
-            Thread.sleep(3000);
             server.shutdown();
+            // wait for all messages to be logged
+            Thread.sleep(1000);
         }
     }
 
     @Test
     public void testMessages() throws DeploymentException, InterruptedException, IOException {
         final Server server = startServer(EchoEndpoint.class);
-        setLoggerLevel(TyrusEndpointWrapper.class.getName(), Level.FINEST);
         final CountDownLatch stringMessageLatch = new CountDownLatch(1);
         final CountDownLatch binaryMessageLatch = new CountDownLatch(1);
 
@@ -288,15 +281,123 @@ public class DebugTest extends TestContainer {
 
             }, ClientEndpointConfig.Builder.create().build(), getURI(EchoEndpoint.class));
 
-            assertTrue(stringMessageLatch.await(1, TimeUnit.SECONDS));
-            assertTrue(binaryMessageLatch.await(1, TimeUnit.SECONDS));
+            assertTrue(stringMessageLatch.await(3, TimeUnit.SECONDS));
+            assertTrue(binaryMessageLatch.await(3, TimeUnit.SECONDS));
 
         } catch (Exception e) {
             e.printStackTrace();
             fail();
         } finally {
-            Thread.sleep(3000);
             stopServer(server);
+            // wait for all messages to be logged
+            Thread.sleep(1000);
+        }
+    }
+
+    @Test
+    public void test404Trace() throws DeploymentException, InterruptedException, IOException {
+
+        getServerProperties().put(TyrusWebSocketEngine.TRACING_TYPE, "ON_DEMAND");
+        final Server server = startServer(Endpoint1.class, Endpoint2.class, Endpoint3.class, Endpoint4.class, Endpoint5.class, Endpoint6.class);
+
+        try {
+            final ClientManager client = createClient();
+
+            client.connectToServer(new Endpoint() {
+                @Override
+                public void onOpen(Session session, EndpointConfig endpointConfig) {
+                }
+            }, getTraceConfigurator(new CountDownLatch(1)), getURI("/endpoint/b"));
+
+            fail();
+        } catch (Exception e) {
+            //  do nothing - the exception is expected
+        } finally {
+            stopServer(server);
+            // wait for all messages to be logged
+            Thread.sleep(1000);
+        }
+    }
+
+    @Test
+    public void testMatchTrace() throws DeploymentException, InterruptedException, IOException {
+
+        getServerProperties().put(TyrusWebSocketEngine.TRACING_TYPE, "on_demand");
+        final Server server = startServer(Endpoint1.class, Endpoint2.class, Endpoint3.class, Endpoint4.class, Endpoint5.class, Endpoint6.class);
+
+        CountDownLatch traceHeaderLatch = new CountDownLatch(1);
+        try {
+            final ClientManager client = createClient();
+            client.getProperties().put(ClientProperties.LOG_UPGRADE_MESSAGES, true);
+            client.connectToServer(new Endpoint() {
+                @Override
+                public void onOpen(Session session, EndpointConfig endpointConfig) {
+
+                }
+            }, getTraceConfigurator(traceHeaderLatch), getURI(Endpoint4.class));
+
+            assertTrue(traceHeaderLatch.await(1, TimeUnit.SECONDS));
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail();
+        } finally {
+            stopServer(server);
+            // wait for all messages to be logged
+            Thread.sleep(1000);
+        }
+    }
+
+    @Test
+    public void testMatchTraceAll() throws DeploymentException, InterruptedException, IOException {
+
+        getServerProperties().put(TyrusWebSocketEngine.TRACING_TYPE, "ALL");
+        final Server server = startServer(Endpoint1.class, Endpoint2.class, Endpoint3.class, Endpoint4.class, Endpoint5.class, Endpoint6.class);
+
+        try {
+            final ClientManager client = createClient();
+            CountDownLatch traceHeaderLatch = new CountDownLatch(1);
+
+            client.connectToServer(new Endpoint() {
+                @Override
+                public void onOpen(Session session, EndpointConfig endpointConfig) {
+
+                }
+            }, getTraceConfigurator(traceHeaderLatch), getURI(Endpoint4.class));
+
+            assertTrue(traceHeaderLatch.await(5, TimeUnit.SECONDS));
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail();
+        } finally {
+            stopServer(server);
+            // wait for all messages to be logged
+            Thread.sleep(1000);
+        }
+    }
+
+    @Test
+    public void testErrorTrace() throws DeploymentException, InterruptedException, IOException {
+
+        getServerProperties().put(TyrusWebSocketEngine.TRACING_TYPE, "all");
+        final Server server = startServer(Endpoint1.class, Endpoint2.class, Endpoint3.class, Endpoint4.class, Endpoint5.class, Endpoint6.class);
+
+        try {
+            final ClientManager client = createClient();
+            client.getProperties().put(ClientProperties.LOG_UPGRADE_MESSAGES, true);
+            client.connectToServer(new Endpoint() {
+                @Override
+                public void onOpen(Session session, EndpointConfig endpointConfig) {
+
+                }
+            }, getWebsocketVersion12Configurator(), getURI(Endpoint4.class));
+
+            fail();
+        } catch (Exception e) {
+            //  do nothing - the exception is expected
+        } finally {
+            stopServer(server);
+            // wait for all messages to be logged
+            Thread.sleep(1000);
         }
     }
 
@@ -340,52 +441,36 @@ public class DebugTest extends TestContainer {
         return server;
     }
 
-    private void setLoggerLevel(String loggerName, Level level) {
-        Logger logger = Logger.getLogger(loggerName);
-        if (logger.isLoggable(level)) {
-            // already set
-            return;
+    public static class DebugTestFormatter extends Formatter {
+
+        @Override
+        public String format(LogRecord record) {
+            return record.getMessage() + "\n";
         }
-        logger.setLevel(level);
-        ConsoleHandler consoleHandler = new ConsoleHandler();
-        consoleHandler.setLevel(level);
-        logger.addHandler(consoleHandler);
-        consoleHandler.setFormatter(new Formatter() {
-            @Override
-            public String format(LogRecord record) {
-                return record.getMessage() + "\n";
-            }
-        });
     }
 
     @ServerEndpoint("/endpoint/{a}/b")
     public static class Endpoint1 {
-
     }
 
     @ServerEndpoint("/endpoint/{a}/{b}")
     public static class Endpoint2 {
-
     }
 
     @ServerEndpoint("/endpoint/a/{b}")
     public static class Endpoint3 {
-
     }
 
     @ServerEndpoint("/endpoint/a/b")
     public static class Endpoint4 {
-
     }
 
     @ServerEndpoint("/endpoint/a")
     public static class Endpoint5 {
-
     }
 
     @ServerEndpoint("/endpoint/a/a")
     public static class Endpoint6 {
-
     }
 
     @ServerEndpoint("/endpoint/echo")
@@ -400,5 +485,33 @@ public class DebugTest extends TestContainer {
         public void onMessage(ByteBuffer message, Session session) {
             session.getAsyncRemote().sendBinary(message);
         }
+    }
+
+    private ClientEndpointConfig getTraceConfigurator(final CountDownLatch traceHeaderLatch) {
+        return ClientEndpointConfig.Builder.create().configurator(new ClientEndpointConfig.Configurator() {
+            @Override
+            public void beforeRequest(Map<String, List<String>> headers) {
+                headers.put(UpgradeRequest.ENABLE_TRACING_HEADER, Arrays.asList("Whatever"));
+                headers.put(UpgradeRequest.TRACING_THRESHOLD, Arrays.asList("SUMMARY"));
+            }
+
+            @Override
+            public void afterResponse(HandshakeResponse hr) {
+                for (Map.Entry<String, List<String>> header : hr.getHeaders().entrySet()) {
+                    if (header.getKey().contains(UpgradeResponse.TRACING_HEADER_PREFIX.toLowerCase())) {
+                        traceHeaderLatch.countDown();
+                    }
+                }
+            }
+        }).build();
+    }
+
+    private ClientEndpointConfig getWebsocketVersion12Configurator() {
+        return ClientEndpointConfig.Builder.create().configurator(new ClientEndpointConfig.Configurator() {
+            @Override
+            public void beforeRequest(Map<String, List<String>> headers) {
+                headers.put(HandshakeRequest.SEC_WEBSOCKET_VERSION, Arrays.asList("12"));
+            }
+        }).build();
     }
 }

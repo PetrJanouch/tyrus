@@ -367,6 +367,7 @@ public class Utils {
      * @param defaultValue value returned when record does not exist in supplied map.
      * @return typed value or {@code null} if property is not set or value is not assignable.
      */
+    @SuppressWarnings("unchecked")
     public static <T> T getProperty(final Map<String, Object> properties, final String key, final Class<T> type, final T defaultValue) {
         if (properties != null) {
             final Object o = properties.get(key);
@@ -384,6 +385,12 @@ public class Utils {
                     } else if (type.equals(Boolean.class)) {
                         //noinspection unchecked
                         return (T) (Boolean) (o.toString().equals("1") || Boolean.valueOf(o.toString()));
+                    } else if (type.isEnum()) {
+                        try {
+                            return (T) Enum.valueOf((Class<? extends Enum>) type, o.toString().trim().toUpperCase());
+                        } catch (Exception e) {
+                            return defaultValue;
+                        }
                     } else {
                         return null;
                     }
@@ -478,10 +485,11 @@ public class Utils {
         if (upgradeRequest == null) {
             return null;
         }
+
         StringBuilder request = new StringBuilder();
         request.append("GET ");
         request.append(upgradeRequest.getRequestUri());
-        request.append(" HTTP/1.1\r\n");
+        request.append("\n");
         appendHeaders(request, upgradeRequest.getHeaders());
         return request.toString();
     }
@@ -497,7 +505,6 @@ public class Utils {
             return null;
         }
         StringBuilder request = new StringBuilder();
-        request.append("HTTP/1.1 ");
         request.append(upgradeResponse.getStatus());
         request.append("\n");
         appendHeaders(request, upgradeResponse.getHeaders());
@@ -519,7 +526,7 @@ public class Utils {
 
     private static void appendHeader(StringBuilder message, String key, String value) {
         message.append(key);
-        message.append(":");
+        message.append(": ");
         for (String filteredHeader : FILTERED_HEADERS) {
             if (filteredHeader.equals(key)) {
                 value = "*****";

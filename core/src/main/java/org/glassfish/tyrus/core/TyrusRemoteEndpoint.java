@@ -94,9 +94,7 @@ public abstract class TyrusRemoteEndpoint implements javax.websocket.RemoteEndpo
         public void sendText(String text) throws IOException {
             checkNotNull(text, "text");
 
-            if (LOGGER.isLoggable(Level.FINEST)) {
-                LOGGER.log(Level.FINEST, "Session " + session.getId() + ": Sending text message: " + text);
-            }
+            session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_OUT, "Sending text message: " + text);
 
             final Future<?> future = webSocket.sendText(text);
             try {
@@ -110,9 +108,7 @@ public abstract class TyrusRemoteEndpoint implements javax.websocket.RemoteEndpo
         public void sendBinary(ByteBuffer data) throws IOException {
             checkNotNull(data, "data");
 
-            if (LOGGER.isLoggable(Level.FINEST)) {
-                LOGGER.log(Level.FINEST, "Session " + session.getId() + ": Sending binary message");
-            }
+            session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_OUT, "Sending binary message");
 
             final Future<?> future = webSocket.sendBinary(Utils.getRemainingArray(data));
             try {
@@ -126,9 +122,7 @@ public abstract class TyrusRemoteEndpoint implements javax.websocket.RemoteEndpo
         public void sendText(String partialMessage, boolean isLast) throws IOException {
             checkNotNull(partialMessage, "partialMessage");
 
-            if (LOGGER.isLoggable(Level.FINEST)) {
-                LOGGER.log(Level.FINEST, "Session " + session.getId() + ": Sending partial text message: " + partialMessage);
-            }
+            session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_OUT, "Sending partial text message: " + partialMessage);
 
             final Future<?> future = webSocket.sendText(partialMessage, isLast);
             try {
@@ -142,9 +136,7 @@ public abstract class TyrusRemoteEndpoint implements javax.websocket.RemoteEndpo
         public void sendBinary(ByteBuffer partialByte, boolean isLast) throws IOException {
             checkNotNull(partialByte, "partialByte");
 
-            if (LOGGER.isLoggable(Level.FINEST)) {
-                LOGGER.log(Level.FINEST, "Session " + session.getId() + ": Sending partial binary message");
-            }
+            session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_OUT, "Sending partial binary message");
 
             final Future<?> future = webSocket.sendBinary(Utils.getRemainingArray(partialByte), isLast);
             try {
@@ -290,10 +282,12 @@ public abstract class TyrusRemoteEndpoint implements javax.websocket.RemoteEndpo
 
             switch (type) {
                 case TEXT:
+                    session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_OUT, "Sending text message: " + message);
                     result = webSocket.sendText((String) message);
                     break;
 
                 case BINARY:
+                    session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_OUT, "Sending binary message");
                     result = webSocket.sendBinary(Utils.getRemainingArray((ByteBuffer) message));
                     break;
 
@@ -371,6 +365,7 @@ public abstract class TyrusRemoteEndpoint implements javax.websocket.RemoteEndpo
     Future<?> sendSyncObject(Object o) {
         Object toSend;
         try {
+            session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_OUT, "Sending object: " + o);
             toSend = endpointWrapper.doEncode(session, o);
         } catch (final Exception e) {
             return new Future<Object>() {

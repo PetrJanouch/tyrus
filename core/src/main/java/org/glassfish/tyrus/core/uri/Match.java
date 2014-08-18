@@ -47,8 +47,8 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.glassfish.tyrus.core.DebugContext;
 import org.glassfish.tyrus.core.TyrusEndpointWrapper;
-import org.glassfish.tyrus.core.UpgradeDebugContext;
 import org.glassfish.tyrus.core.uri.internal.PathSegment;
 import org.glassfish.tyrus.core.uri.internal.UriComponent;
 
@@ -186,7 +186,7 @@ public class Match {
      * @return TODO
      */
     public static Match getBestMatch(String incoming, Set<TyrusEndpointWrapper> thingsWithPath) {
-        List<Match> sortedMatches = getAllMatches(incoming, thingsWithPath, new UpgradeDebugContext());
+        List<Match> sortedMatches = getAllMatches(incoming, thingsWithPath, new DebugContext());
         if (sortedMatches.isEmpty()) {
             return null;
         } else {
@@ -201,18 +201,18 @@ public class Match {
      * @param thingsWithPath TODO
      * @return TODO
      */
-    public static List<Match> getAllMatches(String incoming, Set<TyrusEndpointWrapper> thingsWithPath, UpgradeDebugContext upgradeDebugContext) {
+    public static List<Match> getAllMatches(String incoming, Set<TyrusEndpointWrapper> thingsWithPath, DebugContext debugContext) {
         Set<Match> matches = new HashSet<Match>();
         for (TyrusEndpointWrapper nextThingWithPath : thingsWithPath) {
-            Match m = matchPath(incoming, nextThingWithPath, upgradeDebugContext);
+            Match m = matchPath(incoming, nextThingWithPath, debugContext);
             if (m != null) {
                 matches.add(m);
             }
         }
         List<Match> sortedMatches = new ArrayList<Match>();
         sortedMatches.addAll(matches);
-        Collections.sort(sortedMatches, new MatchComparator(upgradeDebugContext));
-        upgradeDebugContext.appendMessage(Level.FINE, "Endpoints matched to the request URI: " + sortedMatches);
+        Collections.sort(sortedMatches, new MatchComparator(debugContext));
+        debugContext.appendTraceMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Endpoints matched to the request URI: " + sortedMatches);
         return sortedMatches;
     }
 
@@ -267,12 +267,12 @@ public class Match {
         return eq;
     }
 
-    private static Match matchPath(String incoming, TyrusEndpointWrapper hasPath, UpgradeDebugContext upgradeDebugContext) {
-        upgradeDebugContext.appendMessage(Level.FINER, "Matching URIs " + incoming + " and " + hasPath.getEndpointPath());
+    private static Match matchPath(String incoming, TyrusEndpointWrapper hasPath, DebugContext debugContext) {
+        debugContext.appendTraceMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Matching URIs " + incoming + " and " + hasPath.getEndpointPath());
         List<PathSegment> incomingList = UriComponent.decodePath(incoming, true);
         List<PathSegment> pathList = UriComponent.decodePath(hasPath.getEndpointPath(), true);
         if (incomingList.size() != pathList.size()) {
-            upgradeDebugContext.appendMessage(Level.FINER, "URIs " + incoming + " and " + hasPath.getEndpointPath() + " have different length");
+            debugContext.appendTraceMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "URIs " + incoming + " and " + hasPath.getEndpointPath() + " have different length");
             return null;
         } else {
             Match m = new Match(hasPath);
@@ -287,7 +287,7 @@ public class Match {
                     somethingMatched = true;
                     m.addParameter(getVariableName(pathSegment), incomingSegment, i);
                 } else {
-                    upgradeDebugContext.appendMessage(Level.FINER, "Segment " + pathSegment + " does not match");
+                    debugContext.appendTraceMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Segment \"" + pathSegment + "\" does not match");
                     return null; // no match
                 }
             }

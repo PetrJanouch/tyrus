@@ -103,6 +103,8 @@ public class TyrusServerConfiguration implements ServerApplicationConfig {
         final Set<Class<? extends Endpoint>> scannedProgramatics = new HashSet<Class<? extends Endpoint>>();
         final Set<Class<?>> scannedAnnotateds = new HashSet<Class<?>>();
 
+        StringBuilder logMessage = new StringBuilder();
+
         for (Iterator<Class<?>> it = classes.iterator(); it.hasNext(); ) {
             Class<?> cls = it.next();
 
@@ -112,18 +114,18 @@ public class TyrusServerConfiguration implements ServerApplicationConfig {
             }
 
             if (ServerApplicationConfig.class.isAssignableFrom(cls)) {
-                LOGGER.config("Found server application config: " + cls.getName());
+                logMessage.append("Found server application config: " + cls.getName() + "\n");
                 ServerApplicationConfig config = (ServerApplicationConfig) ReflectionHelper.getInstance(cls, errorCollector);
                 configurations.add(config);
             }
 
             if (Endpoint.class.isAssignableFrom(cls)) {
-                LOGGER.config("Found endpoint: " + cls.getName());
+                logMessage.append("Found endpoint: " + cls.getName());
                 scannedProgramatics.add((Class<? extends Endpoint>) cls);
             }
 
             if (cls.isAnnotationPresent(ServerEndpoint.class)) {
-                LOGGER.config("Found annotated endpoint: " + cls.getName());
+                logMessage.append("Found annotated endpoint: " + cls.getName() + "\n");
                 scannedAnnotateds.add(cls);
             }
         }
@@ -140,11 +142,11 @@ public class TyrusServerConfiguration implements ServerApplicationConfig {
 
             // or add any @ServerEndpoint annotated class
             if (c.isAnnotationPresent(ServerEndpoint.class)) {
-                LOGGER.config("Found annotated endpoint: " + c.getName());
+                logMessage.append("Found annotated endpoint: " + c.getName() + "\n");
                 annotatedClasses.add(c);
 
             } else if (ServerApplicationConfig.class.isAssignableFrom(c)) {
-                LOGGER.config("Found server application config: " + c.getName());
+                logMessage.append("Found server application config: " + c.getName() + "\n");
                 ServerApplicationConfig config = (ServerApplicationConfig) ReflectionHelper.getInstance(c, errorCollector);
                 configurations.add(config);
 
@@ -152,6 +154,10 @@ public class TyrusServerConfiguration implements ServerApplicationConfig {
             } else {
                 errorCollector.addException(new DeploymentException(String.format("Class %s is not ServerApplicationConfig descendant nor has @ServerEndpoint annotation.", c.getName())));
             }
+        }
+
+        if (logMessage.toString() != "") {
+            LOGGER.config(logMessage.toString());
         }
 
         if (!configurations.isEmpty()) {

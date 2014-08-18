@@ -68,12 +68,12 @@ import javax.websocket.WebSocketContainer;
 import org.glassfish.tyrus.core.AnnotatedEndpoint;
 import org.glassfish.tyrus.core.BaseContainer;
 import org.glassfish.tyrus.core.ComponentProviderService;
+import org.glassfish.tyrus.core.DebugContext;
 import org.glassfish.tyrus.core.ErrorCollector;
 import org.glassfish.tyrus.core.ReflectionHelper;
 import org.glassfish.tyrus.core.TyrusEndpointWrapper;
 import org.glassfish.tyrus.core.TyrusFuture;
 import org.glassfish.tyrus.core.TyrusSession;
-import org.glassfish.tyrus.core.UpgradeDebugContext;
 import org.glassfish.tyrus.core.Utils;
 import org.glassfish.tyrus.core.monitoring.EndpointEventListener;
 import org.glassfish.tyrus.spi.ClientContainer;
@@ -511,7 +511,7 @@ public class ClientManager extends BaseContainer implements WebSocketContainer {
 
                         do {
                             final CountDownLatch responseLatch = new CountDownLatch(1);
-                            final UpgradeDebugContext upgradeDebugContext = new UpgradeDebugContext();
+                            final DebugContext debugContext = new DebugContext();
 
                             final ClientManagerHandshakeListener listener = new ClientManagerHandshakeListener() {
 
@@ -521,14 +521,14 @@ public class ClientManager extends BaseContainer implements WebSocketContainer {
                                 @Override
                                 public void onSessionCreated(Session session) {
                                     this.session = session;
-                                    upgradeDebugContext.writeToLog();
+                                    debugContext.flush();
                                     responseLatch.countDown();
                                 }
 
                                 @Override
                                 public void onError(Throwable exception) {
                                     throwable = exception;
-                                    upgradeDebugContext.writeToLog();
+                                    debugContext.flush();
                                     responseLatch.countDown();
                                 }
 
@@ -570,7 +570,7 @@ public class ClientManager extends BaseContainer implements WebSocketContainer {
                                     throw new DeploymentException("Invalid URI.", e);
                                 }
 
-                                TyrusClientEngine clientEngine = new TyrusClientEngine(clientEndpoint, listener, copiedProperties, uri, upgradeDebugContext);
+                                TyrusClientEngine clientEngine = new TyrusClientEngine(clientEndpoint, listener, copiedProperties, uri, debugContext);
 
                                 container.openClientSocket(config, copiedProperties, clientEngine);
 
