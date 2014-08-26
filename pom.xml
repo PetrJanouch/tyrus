@@ -366,6 +366,9 @@
                                 ga('send', 'pageview');
                                 </script>]]>
                         </bottom>
+                        <links>
+                            <link>https://tyrus.java.net/apidocs-javax.websocket/1.0</link>
+                        </links>
                     </configuration>
                     <executions>
                         <execution>
