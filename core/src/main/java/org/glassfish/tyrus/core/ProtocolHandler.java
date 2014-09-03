@@ -42,6 +42,7 @@ package org.glassfish.tyrus.core;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Future;
@@ -413,6 +414,11 @@ public final class ProtocolHandler {
     }
 
     public ByteBuffer frame(Frame frame) {
+
+        if (client) {
+            int maskingKey = new SecureRandom().nextInt();
+            frame = Frame.builder(frame).maskingKey(maskingKey).build();
+        }
 
         if (extensions != null && extensions.size() > 0) {
             for (Extension extension : extensions) {

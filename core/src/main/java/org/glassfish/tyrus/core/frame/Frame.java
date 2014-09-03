@@ -40,8 +40,6 @@
 
 package org.glassfish.tyrus.core.frame;
 
-import java.security.SecureRandom;
-
 /**
  * WebSocket frame representation.
  * <p/>
@@ -246,7 +244,7 @@ public class Frame {
 
         private byte opcode;
         private long payloadLength;
-        private int maskingKey = new SecureRandom().nextInt();
+        private int maskingKey = -1;
 
         private byte[] payloadData;
 
