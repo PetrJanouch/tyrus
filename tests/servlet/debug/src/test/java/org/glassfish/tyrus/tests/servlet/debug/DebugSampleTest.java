@@ -85,6 +85,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
+ * Does not automatically test anything, it only servers as a sample use of the debug mode or for manual testing of the debug mode.
+ *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
 public class DebugSampleTest extends TestContainer {

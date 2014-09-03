@@ -212,7 +212,7 @@ public class Match {
         List<Match> sortedMatches = new ArrayList<Match>();
         sortedMatches.addAll(matches);
         Collections.sort(sortedMatches, new MatchComparator(debugContext));
-        debugContext.appendTraceMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Endpoints matched to the request URI: " + sortedMatches);
+        debugContext.appendTraceMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Endpoints matched to the request URI: ", sortedMatches);
         return sortedMatches;
     }
 
@@ -268,11 +268,11 @@ public class Match {
     }
 
     private static Match matchPath(String incoming, TyrusEndpointWrapper hasPath, DebugContext debugContext) {
-        debugContext.appendTraceMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Matching URIs " + incoming + " and " + hasPath.getEndpointPath());
+        debugContext.appendTraceMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Matching request URI ", incoming, " against ", hasPath.getEndpointPath());
         List<PathSegment> incomingList = UriComponent.decodePath(incoming, true);
         List<PathSegment> pathList = UriComponent.decodePath(hasPath.getEndpointPath(), true);
         if (incomingList.size() != pathList.size()) {
-            debugContext.appendTraceMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "URIs " + incoming + " and " + hasPath.getEndpointPath() + " have different length");
+            debugContext.appendTraceMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "URIs ", incoming, " and ", hasPath.getEndpointPath(), " have different length");
             return null;
         } else {
             Match m = new Match(hasPath);
@@ -287,7 +287,7 @@ public class Match {
                     somethingMatched = true;
                     m.addParameter(getVariableName(pathSegment), incomingSegment, i);
                 } else {
-                    debugContext.appendTraceMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Segment \"" + pathSegment + "\" does not match");
+                    debugContext.appendTraceMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Segment \"", pathSegment, "\" does not match");
                     return null; // no match
                 }
             }

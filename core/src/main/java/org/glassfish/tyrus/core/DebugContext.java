@@ -100,11 +100,11 @@ public class DebugContext {
      *
      * @param logger       logger to be used to log the message.
      * @param loggingLevel message level.
-     * @param message      message to be logged.
      * @param type         type of the message.
+     * @param messageParts message parts that will be concatenated to create a log message.
      */
-    public void appendLogMessage(Logger logger, Level loggingLevel, Type type, String message) {
-        appendLogMessage(logger, loggingLevel, type, message, null);
+    public void appendLogMessage(Logger logger, Level loggingLevel, Type type, Object... messageParts) {
+        appendLogMessageWithThrowable(logger, loggingLevel, type, null, messageParts);
     }
 
     /**
@@ -114,11 +114,11 @@ public class DebugContext {
      *
      * @param logger       logger to be used to log the message.
      * @param loggingLevel message level.
-     * @param message      message to be logged.
      * @param type         type of the message.
+     * @param messageParts message parts that will be stringified and concatenated to create a log message.
      */
-    public void appendTraceMessage(Logger logger, Level loggingLevel, Type type, String message) {
-        appendTraceMessage(logger, loggingLevel, type, message, null);
+    public void appendTraceMessage(Logger logger, Level loggingLevel, Type type, Object... messageParts) {
+        appendTraceMessageWithThrowable(logger, loggingLevel, type, null, messageParts);
     }
 
     /**
@@ -127,12 +127,15 @@ public class DebugContext {
      *
      * @param logger       logger to be used to log the message.
      * @param loggingLevel message level.
-     * @param message      message to be logged.
      * @param type         type of the message.
-     * @param t            throwable that has been thrown
+     * @param t            throwable that has been thrown.
+     * @param messageParts message parts that will be stringified and concatenated to create a log message.
      */
-    public void appendLogMessage(Logger logger, Level loggingLevel, Type type, String message, Throwable t) {
+    public void appendLogMessageWithThrowable(Logger logger, Level loggingLevel, Type type, Throwable t, Object... messageParts) {
         if (logger.isLoggable(loggingLevel)) {
+
+            String message = stringifyMessageParts(messageParts);
+
             if (sessionId == null) {
                 logRecords.add(new LogRecord(logger, loggingLevel, type, message, t, false));
             } else {
@@ -145,7 +148,6 @@ public class DebugContext {
         }
     }
 
-
     /**
      * Append a message to the log and to the list of trace messages that are sent in handshake response.
      * The logging will be postponed until the message can be provided with a session ID. Randomly generated session ID
@@ -153,16 +155,17 @@ public class DebugContext {
      *
      * @param logger       logger to be used to log the message.
      * @param loggingLevel message level.
-     * @param message      message to be logged.
      * @param type         type of the message.
-     * @param t            throwable that has been thrown
+     * @param t            throwable that has been thrown.
+     * @param messageParts message parts that will be stringified and concatenated to create a log message.
      */
-    public void appendTraceMessage(Logger logger, Level loggingLevel, Type type, String message, Throwable t) {
+    public void appendTraceMessageWithThrowable(Logger logger, Level loggingLevel, Type type, Throwable t, Object... messageParts) {
         if (this.tracingLevel.intValue() <= loggingLevel.intValue()) {
+            String message = stringifyMessageParts(messageParts);
             appendTracingHeader(message);
         }
 
-        appendLogMessage(logger, loggingLevel, type, message, t);
+        appendLogMessageWithThrowable(logger, loggingLevel, type, t, messageParts);
     }
 
     /**
@@ -267,6 +270,16 @@ public class DebugContext {
         return formattedMessage.toString();
     }
 
+    private String stringifyMessageParts(Object... messageParts) {
+        StringBuilder sb = new StringBuilder();
+
+        for (Object messagePart : messageParts) {
+            sb.append(messagePart);
+        }
+
+        return sb.toString();
+    }
+
     private static class LogRecord {
         /**
          * Logger that will be used to log the message.
@@ -341,7 +354,15 @@ public class DebugContext {
      * Tracing threshold - used for configuration granularity of information that will be sent in tracing headers.
      */
     public enum TracingThreshold {
+        /**
+         * A less verbose tracing, an equivalent to {@link java.util.logging.Level#FINER} logging level.
+         */
         SUMMARY,
+        /**
+         * A more verbose tracing, an equivalent to {@link java.util.logging.Level#FINE} logging level.
+         * <p/>
+         * The default tracing threshold.
+         */
         TRACE
     }
 }

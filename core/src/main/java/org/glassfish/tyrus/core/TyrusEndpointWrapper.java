@@ -380,7 +380,7 @@ public class TyrusEndpointWrapper {
             if (type != null && type.isAssignableFrom(selectedDecoder.getType())) {
                 final Decoder.Text decoder = (Decoder.Text) getCoderInstance(session, selectedDecoder);
 
-                session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_IN, "Decoding with " + selectedDecoder);
+                session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_IN, "Decoding with ", selectedDecoder);
 
                 // TYRUS-210: willDecode was already called
                 return decoder.decode((String) message);
@@ -389,14 +389,14 @@ public class TyrusEndpointWrapper {
             if (type != null && type.isAssignableFrom(selectedDecoder.getType())) {
                 final Decoder.Binary decoder = (Decoder.Binary) getCoderInstance(session, selectedDecoder);
 
-                session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_IN, "Decoding with " + selectedDecoder);
+                session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_IN, "Decoding with ", selectedDecoder);
                 // TYRUS-210: willDecode was already called
                 return decoder.decode((ByteBuffer) message);
             }
         } else if (Decoder.TextStream.class.isAssignableFrom(decoderClass)) {
             if (type != null && type.isAssignableFrom(selectedDecoder.getType())) {
 
-                session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_IN, "Decoding with " + selectedDecoder);
+                session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_IN, "Decoding with ", selectedDecoder);
 
                 return ((Decoder.TextStream) getCoderInstance(session, selectedDecoder)).decode(new StringReader((String) message));
             }
@@ -404,7 +404,7 @@ public class TyrusEndpointWrapper {
             if (type != null && type.isAssignableFrom(selectedDecoder.getType())) {
                 byte[] array = ((ByteBuffer) message).array();
 
-                session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_IN, "Decoding with " + selectedDecoder);
+                session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_IN, "Decoding with ", selectedDecoder);
 
                 return ((Decoder.BinaryStream) getCoderInstance(session, selectedDecoder)).decode(new ByteArrayInputStream(array));
             }
@@ -436,7 +436,7 @@ public class TyrusEndpointWrapper {
             }
         }
 
-        session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_IN, "Applicable decoders: " + result);
+        session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_IN, "Applicable decoders: ", result);
 
         return result;
     }
@@ -490,7 +490,7 @@ public class TyrusEndpointWrapper {
     private void logUsedEncoder(CoderWrapper<Encoder> encoder, Session session) {
         if (LOGGER.isLoggable(Level.FINEST)) {
             if (session instanceof TyrusSession) {
-                ((TyrusSession) session).getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_OUT, "Encoding with: " + encoder);
+                ((TyrusSession) session).getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_OUT, "Encoding with: ", encoder);
             }
         }
     }
@@ -651,10 +651,10 @@ public class TyrusEndpointWrapper {
                         }
                     }
 
-                    debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Session opening refused: " + refuseDetail);
+                    debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Session opening refused: ", refuseDetail);
                     session.close(new CloseReason(CloseReason.CloseCodes.TRY_AGAIN_LATER, refuseDetail));
                 } catch (IOException e) {
-                    debugContext.appendLogMessage(LOGGER, Level.WARNING, DebugContext.Type.MESSAGE_IN, e.getMessage(), e);
+                    debugContext.appendLogMessageWithThrowable(LOGGER, Level.WARNING, DebugContext.Type.MESSAGE_IN, e, e.getMessage());
                 }
                 // session was not opened.
                 return null;
@@ -673,14 +673,14 @@ public class TyrusEndpointWrapper {
         if (toCall == null) {
             if (!collector.isEmpty()) {
                 Throwable t = collector.composeComprehensiveException();
-                debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, t.getMessage(), t);
+                debugContext.appendLogMessageWithThrowable(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, t, t.getMessage());
             }
             webSocketToSession.remove(socket);
             sessionListener.onClose(session, CloseReasons.UNEXPECTED_CONDITION.getCloseReason());
             try {
                 session.close(CloseReasons.UNEXPECTED_CONDITION.getCloseReason());
             } catch (IOException e) {
-                debugContext.appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_IN, e.getMessage(), e);
+                debugContext.appendLogMessageWithThrowable(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_IN, e, e.getMessage());
             }
             // session was not opened.
             return null;
@@ -703,7 +703,7 @@ public class TyrusEndpointWrapper {
                 try {
                     onError.invoke(toCall, session, t);
                 } catch (Exception e) {
-                    debugContext.appendLogMessage(LOGGER, Level.WARNING, DebugContext.Type.MESSAGE_IN, t.getMessage(), t);
+                    debugContext.appendLogMessageWithThrowable(LOGGER, Level.WARNING, DebugContext.Type.MESSAGE_IN, t, t.getMessage());
                 }
             }
             endpointEventListener.onError(session.getId(), t);

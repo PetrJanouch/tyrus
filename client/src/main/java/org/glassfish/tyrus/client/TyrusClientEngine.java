@@ -155,9 +155,9 @@ public class TyrusClientEngine implements ClientEngine {
         this.debugContext = debugContext;
         this.logUpgradeMesssages = Utils.getProperty(properties, ClientProperties.LOG_UPGRADE_MESSAGES, Boolean.class, false);
 
-        debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.OTHER, "Redirect enabled: " + redirectEnabled);
+        debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.OTHER, "Redirect enabled: ", redirectEnabled);
         if (redirectEnabled) {
-            debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.OTHER, "Redirect threshold: " + redirectThreshold);
+            debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.OTHER, "Redirect threshold: ", redirectThreshold);
         }
     }
 
@@ -204,11 +204,15 @@ public class TyrusClientEngine implements ClientEngine {
                 UpgradeRequest upgradeRequest = clientHandShake.getRequest();
 
                 if (clientEngineState.getAuthenticator() != null) {
-                    debugContext.appendLogMessage(LOGGER, Level.CONFIG, DebugContext.Type.MESSAGE_OUT, "Using authenticator: " + clientEngineState.getAuthenticator().getClass().getName());
+
+                    if (LOGGER.isLoggable(Level.CONFIG)) {
+                        debugContext.appendLogMessage(LOGGER, Level.CONFIG, DebugContext.Type.MESSAGE_OUT, "Using authenticator: ", clientEngineState.getAuthenticator().getClass().getName());
+                    }
+
                     String authorizationHeader;
                     try {
                         final Credentials credentials = (Credentials) properties.get(ClientProperties.CREDENTIALS);
-                        debugContext.appendLogMessage(LOGGER, Level.CONFIG, DebugContext.Type.MESSAGE_OUT, "Using credentials: " + credentials);
+                        debugContext.appendLogMessage(LOGGER, Level.CONFIG, DebugContext.Type.MESSAGE_OUT, "Using credentials: ", credentials);
                         authorizationHeader = clientEngineState.getAuthenticator().generateAuthorizationHeader(upgradeRequest.getRequestURI(), clientEngineState.getWwwAuthenticateHeader(), credentials);
                     } catch (AuthenticationException e) {
                         listener.onError(e);
@@ -341,7 +345,7 @@ public class TyrusClientEngine implements ClientEngine {
                         }
 
                         AuthConfig authConfig = Utils.getProperty(properties, ClientProperties.AUTH_CONFIG, AuthConfig.class, AuthConfig.Builder.create().build());
-                        debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_OUT, "Using authentication config: " + authConfig);
+                        debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_OUT, "Using authentication config: ", authConfig);
                         if (authConfig == null) {
                             clientEngineState = TyrusClientEngineState.FAILED;
                             listener.onError(new AuthenticationException(LocalizationMessages.AUTHENTICATION_FAILED()));
@@ -363,7 +367,7 @@ public class TyrusClientEngine implements ClientEngine {
                         final String[] tokens = wwwAuthenticateHeader.trim().split("\\s+", 2);
                         final String scheme = tokens[0];
 
-                        debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_OUT, "Using authentication scheme: " + scheme);
+                        debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_OUT, "Using authentication scheme: ", scheme);
                         final Authenticator authenticator = authConfig.getAuthenticators().get(scheme);
                         if (authenticator == null) {
                             clientEngineState = TyrusClientEngineState.FAILED;
@@ -479,7 +483,7 @@ public class TyrusClientEngine implements ClientEngine {
                     }
 
                     extensions.add(installedExtension);
-                    debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.OTHER, "Installed extension: " + installedExtension.getName());
+                    debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.OTHER, "Installed extension: ", installedExtension.getName());
                 }
             }
         }
@@ -514,7 +518,7 @@ public class TyrusClientEngine implements ClientEngine {
             incomingBufferSize = tyrusIncomingBufferSize;
         }
 
-        debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.OTHER, "Incoming buffer size: " + incomingBufferSize);
+        debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.OTHER, "Incoming buffer size: ", incomingBufferSize);
 
         return new ClientUpgradeInfo() {
             @Override

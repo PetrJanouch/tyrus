@@ -124,7 +124,7 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
      * <p/>
      * The default value is {@link org.glassfish.tyrus.core.DebugContext.TracingType#OFF}.
      */
-    public static final String TRACING_TYPE = "org.glassfish.tyrus.tracingType";
+    public static final String TRACING_TYPE = "org.glassfish.tyrus.server.tracingType";
 
     /**
      * Property used for configuring tracing threshold.
@@ -133,7 +133,7 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
      * <p/>
      * The default value is {@link org.glassfish.tyrus.core.DebugContext.TracingThreshold#SUMMARY}.
      */
-    public static final String TRACING_THRESHOLD = "org.glassfish.tyrus.tracingThreshold";
+    public static final String TRACING_THRESHOLD = "org.glassfish.tyrus.server.tracingThreshold";
 
     /**
      * Wsadl support.
@@ -309,7 +309,8 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
             }
 
             if (endpointWrapper.upgrade(request)) {
-                debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Endpoint selected as a match to the handshake URI: " + endpointWrapper);
+                debugContext.appendTraceMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Endpoint selected as a match to the handshake URI: ", endpointWrapper.getEndpointPath());
+                debugContext.appendLogMessage(LOGGER, Level.FINER, DebugContext.Type.MESSAGE_IN, "Target endpoint: ", endpointWrapper);
                 return endpointWrapper;
             }
         }
@@ -321,7 +322,10 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
     public UpgradeInfo upgrade(final UpgradeRequest request, final UpgradeResponse response) {
 
         DebugContext debugContext = createDebugContext(request);
-        debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Received handshake request:\n" + Utils.stringifyUpgradeRequest(request));
+
+        if (LOGGER.isLoggable(Level.FINE)) {
+            debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Received handshake request:\n" + Utils.stringifyUpgradeRequest(request));
+        }
 
         final TyrusEndpointWrapper endpointWrapper;
         try {
@@ -335,7 +339,10 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
             if (protocolHandler == null) {
                 handleUnsupportedVersion(request, response);
                 debugContext.appendTraceMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Upgrade request contains unsupported version of Websocket protocol");
-                debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_OUT, "Sending handshake response:\n" + Utils.stringifyUpgradeResponse(response));
+
+                if (LOGGER.isLoggable(Level.FINE)) {
+                    debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_OUT, "Sending handshake response:\n" + Utils.stringifyUpgradeResponse(response));
+                }
 
                 response.getHeaders().putAll(debugContext.getTracingHeaders());
                 debugContext.flush();
@@ -365,10 +372,13 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
                 String connectionId = clusterContext.createConnectionId();
                 response.getHeaders().put(UpgradeRequest.CLUSTER_CONNECTION_ID_HEADER, Collections.singletonList(connectionId));
 
-                debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.OTHER, "Connection ID: " + connectionId);
+                debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.OTHER, "Connection ID: ", connectionId);
             }
 
-            debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_OUT, "Sending handshake response:\n" + Utils.stringifyUpgradeResponse(response) + "\n");
+            if (LOGGER.isLoggable(Level.FINE)) {
+                debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_OUT, "Sending handshake response:\n" + Utils.stringifyUpgradeResponse(response) + "\n");
+            }
+
             response.getHeaders().putAll(debugContext.getTracingHeaders());
             return new SuccessfulUpgradeInfo(endpointWrapper, protocolHandler, incomingBufferSize, request, response, extensionContext, debugContext);
         }
@@ -393,8 +403,8 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
         }
         sb.append("]");
 
-        debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.OTHER, "Using negotiated extensions: " + sb.toString());
-        debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.OTHER, "Using negotiated subprotocol: " + protocolHandler.getSubProtocol());
+        debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.OTHER, "Using negotiated extensions: ", sb);
+        debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.OTHER, "Using negotiated subprotocol: ", protocolHandler.getSubProtocol());
     }
 
     private DebugContext createDebugContext(UpgradeRequest upgradeRequest) {
@@ -402,20 +412,29 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
 
         DebugContext.TracingThreshold threshold = tracingThreshold;
 
+        Exception thresholdHeaderParsingError = null;
         if (thresholdHeader != null) {
             try {
                 threshold = DebugContext.TracingThreshold.valueOf(thresholdHeader);
             } catch (Exception e) {
-                //TODO log
+                thresholdHeaderParsingError = e;
             }
         }
 
+        DebugContext debugContext;
         if (tracingType == DebugContext.TracingType.ALL
                 || tracingType == DebugContext.TracingType.ON_DEMAND && upgradeRequest.getHeader(UpgradeRequest.ENABLE_TRACING_HEADER) != null) {
-            return new DebugContext(threshold);
+            debugContext = new DebugContext(threshold);
+        } else {
+            debugContext = new DebugContext();
         }
 
-        return new DebugContext();
+        if (thresholdHeaderParsingError != null) {
+            debugContext.appendTraceMessageWithThrowable(LOGGER, Level.WARNING, DebugContext.Type.MESSAGE_IN, thresholdHeaderParsingError,
+                    "An error occurred while parsing ", UpgradeRequest.TRACING_THRESHOLD, " header:", thresholdHeaderParsingError.getMessage());
+        }
+
+        return debugContext;
     }
 
     private UpgradeInfo handleHandshakeException(HandshakeException handshakeException, UpgradeResponse response) {
@@ -477,7 +496,7 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
                                     try {
                                         frame = ((ExtendedExtension) extension).processIncoming(extensionContext, frame);
                                     } catch (Throwable t) {
-                                        debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, String.format("Extension '%s' threw an exception during processIncoming method invocation: \"%s\".", extension.getName(), t.getMessage()));
+                                        debugContext.appendLogMessageWithThrowable(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, t, "Extension '", extension.getName(), "' threw an exception during processIncoming method invocation: ", t.getMessage());
                                     }
                                 }
                             }
@@ -487,11 +506,11 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
                     } while (true);
                 }
             } catch (WebSocketException e) {
-                debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, e.getMessage(), e);
+                debugContext.appendLogMessageWithThrowable(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, e, e.getMessage());
                 socket.onClose(new CloseFrame(e.getCloseReason()));
             } catch (Exception e) {
                 String message = e.getMessage();
-                debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, e.getMessage(), e);
+                debugContext.appendLogMessageWithThrowable(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, e, e.getMessage());
                 if (endpointWrapper.onError(socket, e)) {
                     if (message != null && message.length() > 123) {
                         // reason phrase length is limited.
