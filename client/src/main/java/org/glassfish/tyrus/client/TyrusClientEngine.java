@@ -115,7 +115,7 @@ public class TyrusClientEngine implements ClientEngine {
     private final Boolean redirectEnabled;
     private final int redirectThreshold;
     private final DebugContext debugContext;
-    private final boolean logUpgradeMesssages;
+    private final boolean logUpgradeMessages;
 
     private volatile Handshake clientHandShake = null;
     private volatile TimeoutHandler timeoutHandler = null;
@@ -135,6 +135,7 @@ public class TyrusClientEngine implements ClientEngine {
      *                                (and alternatives) call.
      * @param properties              passed container properties, see {@link org.glassfish.tyrus.client.ClientManager#getProperties()}.
      * @param connectToServerUriParam to which the client is connecting.
+     * @param debugContext            debug context.
      */
     /* package */ TyrusClientEngine(TyrusEndpointWrapper endpointWrapper, ClientHandshakeListener listener,
                                     Map<String, Object> properties, URI connectToServerUriParam, DebugContext debugContext) {
@@ -153,7 +154,7 @@ public class TyrusClientEngine implements ClientEngine {
         this.redirectThreshold = redirectThreshold;
 
         this.debugContext = debugContext;
-        this.logUpgradeMesssages = Utils.getProperty(properties, ClientProperties.LOG_UPGRADE_MESSAGES, Boolean.class, false);
+        this.logUpgradeMessages = Utils.getProperty(properties, ClientProperties.LOG_UPGRADE_MESSAGES, Boolean.class, false);
 
         debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.OTHER, "Redirect enabled: ", redirectEnabled);
         if (redirectEnabled) {
@@ -238,7 +239,7 @@ public class TyrusClientEngine implements ClientEngine {
         if (LOGGER.isLoggable(Level.FINE)) {
             debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_IN, "Received handshake response: \n" + Utils.stringifyUpgradeResponse(upgradeResponse));
         } else {
-            if (logUpgradeMesssages) {
+            if (logUpgradeMessages) {
                 debugContext.appendStandardOutputMessage(DebugContext.Type.MESSAGE_IN, "Received handshake response: \n" + Utils.stringifyUpgradeResponse(upgradeResponse));
             }
         }
@@ -440,7 +441,7 @@ public class TyrusClientEngine implements ClientEngine {
         if (LOGGER.isLoggable(Level.FINE)) {
             debugContext.appendLogMessage(LOGGER, Level.FINE, DebugContext.Type.MESSAGE_OUT, "Sending handshake request:\n" + Utils.stringifyUpgradeRequest(upgradeRequest));
         } else {
-            if (logUpgradeMesssages) {
+            if (logUpgradeMessages) {
                 debugContext.appendStandardOutputMessage(DebugContext.Type.MESSAGE_OUT, "Sending handshake request:\n" + Utils.stringifyUpgradeRequest(upgradeRequest));
             }
         }

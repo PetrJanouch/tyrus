@@ -601,6 +601,7 @@ public class TyrusEndpointWrapper {
      *
      * @param socket         {@link TyrusWebSocket} who has just connected to this web socket endpoint.
      * @param upgradeRequest request associated with accepted connection.
+     * @param debugContext   debug context.
      * @return Created {@link Session} instance or {@code null} when session was not created properly (max sessions
      * limit on endpoint or application or issues with endpoint validation).
      */

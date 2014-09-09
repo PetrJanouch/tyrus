@@ -195,11 +195,12 @@ public class Match {
     }
 
     /**
-     * Return a list of all matches, in order of match preference, best match last.
+     * Return a list of all endpoints with path matching the request path. The endpoints are in order of match preference, best match first.
      *
-     * @param incoming       TODO
-     * @param thingsWithPath TODO
-     * @return TODO
+     * @param incoming       request path.
+     * @param thingsWithPath endpoints.
+     * @param debugContext   debug context.
+     * @return a list of all endpoints with path matching the request path. The endpoints are in order of match preference, best match first.
      */
     public static List<Match> getAllMatches(String incoming, Set<TyrusEndpointWrapper> thingsWithPath, DebugContext debugContext) {
         Set<Match> matches = new HashSet<Match>();

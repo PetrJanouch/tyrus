@@ -541,7 +541,7 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
      */
     private void register(TyrusEndpointWrapper endpointWrapper) throws DeploymentException {
         checkPath(endpointWrapper);
-        LOGGER.log(Level.CONFIG, "Registered endpoint: " + endpointWrapper);
+        LOGGER.log(Level.FINER, "Registered endpoint: " + endpointWrapper);
         endpointWrappers.add(endpointWrapper);
     }
 
