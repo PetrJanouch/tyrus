@@ -233,6 +233,8 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
         LOGGER.config("Incoming buffer size: " + this.incomingBufferSize);
         LOGGER.config("Max sessions per app: " + maxSessionsPerApp);
         LOGGER.config("Max sessions per remote address: " + maxSessionsPerRemoteAddr);
+        // parallel broadcast is enabled by default, so null means true
+        LOGGER.config("Parallel broadcast enabled: " + (parallelBroadcastEnabled == null || parallelBroadcastEnabled));
 
         this.tracingType = tracingType;
         this.tracingThreshold = tracingThreshold;

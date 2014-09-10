@@ -107,6 +107,7 @@ public class TyrusServletContainerInitializer implements ServletContainerInitial
                     .incomingBufferSize(incomingBufferSize)
                     .maxSessionsPerApp(maxSessionsPerApp)
                     .maxSessionsPerRemoteAddr(maxSessionsPerRemoteAddr)
+                    .parallelBroadcastEnabled(parallelBroadcastEnabled)
                     .tracingType(tracingType)
                     .tracingThreshold(tracingThreshold)
                     .build();
@@ -131,6 +132,7 @@ public class TyrusServletContainerInitializer implements ServletContainerInitial
         if (wsadlEnabled == null) {
             wsadlEnabled = false;
         }
+        LOGGER.config("WSADL enabled: " + wsadlEnabled);
 
         TyrusServletFilter filter = new TyrusServletFilter((TyrusWebSocketEngine) serverContainer.getWebSocketEngine(),
                 wsadlEnabled);
@@ -180,12 +182,16 @@ public class TyrusServletContainerInitializer implements ServletContainerInitial
     private Boolean getBooleanContextParam(ServletContext ctx, String paramName) {
         String initParameter = ctx.getInitParameter(paramName);
         if (initParameter != null) {
-            if (!initParameter.equalsIgnoreCase("true") && !initParameter.equalsIgnoreCase("false")) {
-                LOGGER.log(Level.CONFIG, "Invalid configuration value [" + paramName + " = " + initParameter + "], boolean expected");
-                return null;
+            if (initParameter.equalsIgnoreCase("true")) {
+                return true;
             }
 
-            return Boolean.parseBoolean(initParameter);
+            if (initParameter.equalsIgnoreCase("false")) {
+                return false;
+            }
+
+            LOGGER.log(Level.CONFIG, "Invalid configuration value [" + paramName + " = " + initParameter + "], boolean expected");
+            return null;
         }
 
         return null;

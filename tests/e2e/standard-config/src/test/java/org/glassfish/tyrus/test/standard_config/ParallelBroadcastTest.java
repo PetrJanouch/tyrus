@@ -142,6 +142,7 @@ public class ParallelBroadcastTest extends TestContainer {
      */
     @Test
     public void testTyrusNonParallelTextBroadcast() {
+        // TODO: test on glassfish (servlet tests)
         if (System.getProperty("tyrus.test.host") != null) {
             return;
         }
@@ -157,6 +158,7 @@ public class ParallelBroadcastTest extends TestContainer {
      */
     @Test
     public void testTyrusNonParallelBinaryBroadcast() {
+        // TODO: test on glassfish (servlet tests)
         if (System.getProperty("tyrus.test.host") != null) {
             return;
         }

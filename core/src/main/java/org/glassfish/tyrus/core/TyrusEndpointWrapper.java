@@ -1317,6 +1317,7 @@ public class TyrusEndpointWrapper {
 
         if (!local && clusterContext != null) {
             clusterContext.broadcastBinary(getEndpointPath(), byteArrayMessage);
+            // TODO: fix for cluster case
             return new HashMap<Session, Future<?>>();
         } else {
 
@@ -1394,16 +1395,17 @@ public class TyrusEndpointWrapper {
         }
 
         ExecutorService executor = ((BaseContainer) sessions.get(0).getValue().getContainer()).getExecutorService();
-        Map<Future<Map<Session, Future<?>>>, List<Map.Entry<TyrusWebSocket, TyrusSession>>> submitFutures = new HashMap<Future<Map<Session, Future<?>>>, List<Map.Entry<TyrusWebSocket, TyrusSession>>>();
+        Map<Future<Map<Session, Future<?>>>, int[]> submitFutures = new HashMap<Future<Map<Session, Future<?>>>, int[]>();
 
-        int maxThreadCount = sessions.size() / MIN_SESSIONS_PER_THREAD == 0 ? 1 : sessions.size() / MIN_SESSIONS_PER_THREAD;
+        int sessionCount = sessions.size();
+        int maxThreadCount = sessionCount / MIN_SESSIONS_PER_THREAD == 0 ? 1 : sessionCount / MIN_SESSIONS_PER_THREAD;
         int threadCount = Math.min(Runtime.getRuntime().availableProcessors(), maxThreadCount);
 
         for (int i = 0; i < threadCount; i++) {
-            final int lowerBound = (sessions.size() + threadCount - 1) / threadCount * i;
-            final int upperBound = Math.min((sessions.size() + threadCount - 1) / threadCount * (i + 1), sessions.size());
 
-            final List<Map.Entry<TyrusWebSocket, TyrusSession>> sessionsSlice = new ArrayList<Map.Entry<TyrusWebSocket, TyrusSession>>();
+            final int lowerBound = (sessionCount + threadCount - 1) / threadCount * i;
+            final int upperBound = Math.min((sessionCount + threadCount - 1) / threadCount * (i + 1), sessionCount);
+
             Future<Map<Session, Future<?>>> submitFuture = executor.submit(new Callable<Map<Session, Future<?>>>() {
 
                 @Override
@@ -1419,7 +1421,7 @@ public class TyrusEndpointWrapper {
                 }
             });
 
-            submitFutures.put(submitFuture, sessionsSlice);
+            submitFutures.put(submitFuture, new int[]{lowerBound, upperBound});
         }
 
         final Map<Session, Future<?>> futures = new HashMap<Session, Future<?>>();
@@ -1428,20 +1430,23 @@ public class TyrusEndpointWrapper {
             try {
                 futures.putAll(submitFuture.get());
             } catch (InterruptedException e) {
-                handleSubmitException(futures, submitFutures.get(submitFuture), e);
+                handleSubmitException(futures, sessions, submitFutures.get(submitFuture), e);
             } catch (ExecutionException e) {
-                handleSubmitException(futures, submitFutures.get(submitFuture), e);
+                handleSubmitException(futures, sessions, submitFutures.get(submitFuture), e);
             }
         }
 
         return futures;
     }
 
-    private void handleSubmitException(Map<Session, Future<?>> futures, List<Map.Entry<TyrusWebSocket, TyrusSession>> sessionsSlice, Exception e) {
-        for (Map.Entry<TyrusWebSocket, TyrusSession> entry : sessionsSlice) {
+    private void handleSubmitException(Map<Session, Future<?>> futures,
+                                       List<Map.Entry<TyrusWebSocket, TyrusSession>> sessions,
+                                       int[] bounds, Exception e) {
+
+        for (int j = bounds[0]; j < bounds[1]; j++) {
             TyrusFuture<Void> future = new TyrusFuture<Void>();
             future.setFailure(e);
-            futures.put(entry.getValue(), future);
+            futures.put(sessions.get(j).getValue(), future);
         }
     }
 
