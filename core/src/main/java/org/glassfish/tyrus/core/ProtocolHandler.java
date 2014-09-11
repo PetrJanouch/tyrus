@@ -45,6 +45,7 @@ import java.nio.ByteBuffer;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -84,7 +85,6 @@ public final class ProtocolHandler {
     private static final Logger LOGGER = Logger.getLogger(ProtocolHandler.class.getName());
 
     private final boolean client;
-    private final SecureRandom secureRandom = new SecureRandom();
     private final ParsingState state = new ParsingState();
 
     private volatile TyrusWebSocket webSocket;
@@ -417,7 +417,7 @@ public final class ProtocolHandler {
     public ByteBuffer frame(Frame frame) {
 
         if (client) {
-            frame = Frame.builder(frame).maskingKey(secureRandom.nextInt()).mask(true).build();
+            frame = Frame.builder(frame).maskingKey(1).mask(true).build();
         }
 
         if (extensions != null && extensions.size() > 0) {

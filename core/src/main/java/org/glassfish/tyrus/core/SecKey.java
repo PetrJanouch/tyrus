@@ -55,7 +55,7 @@ import org.glassfish.tyrus.spi.UpgradeRequest;
  * @author Alexey Stashok
  */
 class SecKey {
-    private static final Random random = new SecureRandom();
+ //   private static final Random random = new Random();
 
     private static final int KEY_SIZE = 16;
 
@@ -69,8 +69,9 @@ class SecKey {
     }
 
     private String create() {
-        byte[] bytes = new byte[KEY_SIZE];
-        random.nextBytes(bytes);
+        byte[] bytes = "My supper key".getBytes();
+      //  random.nextBytes(bytes);
+
         return Base64Utils.encodeToString(bytes, false);
     }
 

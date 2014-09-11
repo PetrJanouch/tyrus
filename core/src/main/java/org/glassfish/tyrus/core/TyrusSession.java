@@ -50,6 +50,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Future;
@@ -176,7 +177,7 @@ public class TyrusSession implements Session, DistributedSession {
 
             clusterContext.registerSession(id, endpointWrapper.getEndpointPath(), new SessionEventListener(this));
         } else {
-            id = UUID.randomUUID().toString();
+            id = String.valueOf(new Random().nextLong());
             distributedPropertyMap = null;
             distributedUserProperties = new HashMap<String, Object>();
         }
@@ -448,7 +449,7 @@ public class TyrusSession implements Session, DistributedSession {
         return endpointWrapper.broadcast(message);
     }
 
-    /**
+    /**]
      * Broadcasts binary message to all connected clients, including remote sessions (if any).
      *
      * @param message message to be broadcasted.
