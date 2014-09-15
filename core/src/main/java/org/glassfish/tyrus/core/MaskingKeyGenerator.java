@@ -59,6 +59,7 @@ package org.glassfish.tyrus.core;
  *
  * @author Petr Janouch (petr.janouch at oracle.com)
  */
+@Beta
 public interface MaskingKeyGenerator {
 
     /**
