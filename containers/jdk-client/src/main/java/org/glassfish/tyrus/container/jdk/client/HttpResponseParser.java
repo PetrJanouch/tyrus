@@ -92,7 +92,7 @@ class HttpResponseParser {
         return complete;
     }
 
-    void appendData(ByteBuffer data) {
+    void appendData(ByteBuffer data) throws ParseException {
         if (buffer == null) {
             // parser was already destroyed.
             return;
@@ -100,15 +100,24 @@ class HttpResponseParser {
 
         int responseEndPosition = getEndPosition(data);
         if (responseEndPosition == -1) {
+            checkResponseSize(data);
             buffer = Utils.appendBuffers(buffer, data, BUFFER_MAX_SIZE, BUFFER_STEP_SIZE);
             return;
         }
+
         int limit = data.limit();
         data.limit(responseEndPosition + 1);
+        checkResponseSize(data);
         buffer = Utils.appendBuffers(buffer, data, BUFFER_MAX_SIZE, BUFFER_STEP_SIZE);
         data.limit(limit);
         data.position(responseEndPosition + 1);
         complete = true;
+    }
+
+    private void checkResponseSize(ByteBuffer partToBeAppended) throws ParseException {
+        if (buffer.remaining() + partToBeAppended.remaining() > BUFFER_MAX_SIZE) {
+            throw new ParseException("Upgrade response too big, sizes only up to " + BUFFER_MAX_SIZE + "B are supported.");
+        }
     }
 
     private void parseFirstLine(String[] responseLines, TyrusUpgradeResponse tyrusUpgradeResponse) throws ParseException {
