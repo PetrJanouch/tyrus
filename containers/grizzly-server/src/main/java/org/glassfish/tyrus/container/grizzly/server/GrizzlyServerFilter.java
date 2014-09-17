@@ -107,6 +107,7 @@ class GrizzlyServerFilter extends BaseFilter {
             .createAttribute(TaskProcessor.class.getName() + ".TaskProcessor");
 
     private final ServerContainer serverContainer;
+    private final String contextPath;
 
 
     // ------------------------------------------------------------ Constructors
@@ -114,10 +115,12 @@ class GrizzlyServerFilter extends BaseFilter {
     /**
      * Constructs a new {@link GrizzlyServerFilter}.
      *
-     * @param serverContainer TODO
+     * @param serverContainer server container.
+     * @param contextPath     the context root of the deployed application.
      */
-    public GrizzlyServerFilter(ServerContainer serverContainer) {
+    public GrizzlyServerFilter(ServerContainer serverContainer, String contextPath) {
         this.serverContainer = serverContainer;
+        this.contextPath = contextPath;
     }
 
     // ----------------------------------------------------- Methods from Filter
@@ -237,6 +240,11 @@ class GrizzlyServerFilter extends BaseFilter {
      */
     private NextAction handleHandshake(final FilterChainContext ctx, HttpContent content) {
         final UpgradeRequest upgradeRequest = createWebSocketRequest(content);
+
+        if (!upgradeRequest.getRequestURI().getPath().startsWith(contextPath)) {
+            // the request is not for the deployed application
+            return ctx.getInvokeAction();
+        }
         // TODO: final UpgradeResponse upgradeResponse = GrizzlyUpgradeResponse(HttpResponsePacket)
         final UpgradeResponse upgradeResponse = new TyrusUpgradeResponse();
         final WebSocketEngine.UpgradeInfo upgradeInfo = serverContainer.getWebSocketEngine().upgrade(upgradeRequest, upgradeResponse);
