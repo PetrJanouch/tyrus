@@ -58,7 +58,8 @@ class HttpResponseParser {
     private static final String ENCODING = "ISO-8859-1";
     private static final String LINE_SEPARATOR = "\r\n";
     private static final int BUFFER_STEP_SIZE = 256;
-    private static final int BUFFER_MAX_SIZE = 16384;
+    // this is package private because of the test
+    static final int BUFFER_MAX_SIZE = 16384;
 
     private volatile boolean complete = false;
     private volatile ByteBuffer buffer;

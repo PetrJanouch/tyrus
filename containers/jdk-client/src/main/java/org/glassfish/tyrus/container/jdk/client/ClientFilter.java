@@ -163,7 +163,7 @@ class ClientFilter extends Filter {
                     responseParser.clear();
                 }
             } catch (ParseException e) {
-                LOGGER.log(Level.SEVERE, "Parsing HTTP handshake response failed", e);
+                clientEngine.processError(e);
                 closeConnection();
                 return false;
             }
