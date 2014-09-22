@@ -116,11 +116,12 @@ class GrizzlyServerFilter extends BaseFilter {
      * Constructs a new {@link GrizzlyServerFilter}.
      *
      * @param serverContainer server container.
-     * @param contextPath     the context root of the deployed application.
+     * @param contextPath     the context path of the deployed application. If the value is "" or "/", a request URI "/a"
+     *                        will be divided into context path "" and url-pattern "/a".
      */
     public GrizzlyServerFilter(ServerContainer serverContainer, String contextPath) {
         this.serverContainer = serverContainer;
-        this.contextPath = contextPath;
+        this.contextPath = contextPath.endsWith("/") ? contextPath : contextPath + "/";
     }
 
     // ----------------------------------------------------- Methods from Filter
