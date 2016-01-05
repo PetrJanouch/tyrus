@@ -105,12 +105,12 @@ public class BufferedInputStreamTest extends TestContainer {
 
         @OnOpen
         public void init() {
-            System.out.println("BufferedInputStreamServer opened");
+            System.err.println("BufferedInputStreamServer opened");
         }
 
         @OnMessage
         public void onMessage(Session session, InputStream inputStream) {
-            System.out.println("BufferedInputStreamServer got message: " + inputStream);
+            System.err.println("BufferedInputStreamServer got message: " + inputStream);
             try {
                 DataInputStream dataInputStream = new DataInputStream(inputStream);
                 int messageReceived = dataInputStream.readInt();
@@ -118,11 +118,12 @@ public class BufferedInputStreamTest extends TestContainer {
                 // assertTrue("Server did not get the right message: " + messageReceived, messageReceived ==
                 // BufferedInputStreamTest.MESSAGE);
                 if (messageReceived == BufferedInputStreamEndpoint.MESSAGE) {
-                    System.out.println("Server successfully got message: " + messageReceived);
+                    System.err.println("Server successfully got message: " + messageReceived);
                     session.getBasicRemote().sendText("ok");
+                    System.err.println("check 6");
                 }
             } catch (Exception e) {
-                System.out.println("BufferedInputStreamServer exception: " + e);
+                System.err.println("BufferedInputStreamServer exception: " + e);
                 e.printStackTrace();
             }
         }

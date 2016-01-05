@@ -422,17 +422,22 @@ public class ClientExecutorsManagementTest extends TestContainer {
         @OnMessage
         public void onMessage(Session session, String message) throws IOException, DeploymentException {
             // one option for obtaining a container
+            System.err.println("Check 1");
             Session s = ContainerProvider.getWebSocketContainer()
                                          .connectToServer(AnnotatedClientEndpoint.class, URI.create(message));
             s.close();
 
+            System.err.println("Check 2");
             // another option for obtaining a container
             s = session.getContainer().connectToServer(AnnotatedClientEndpoint.class, URI.create(message));
             s.close();
+            System.err.println("Check 3");
 
             /* An IllegalStateException is thrown if any of the lifecycle operations are invoked on a managed executor
             service, so if the test gets here it means Tyrus does not try to shut down the managed executor service */
             session.getBasicRemote().sendText("OK");
+
+            System.err.println("Check 4");
         }
     }
 }
