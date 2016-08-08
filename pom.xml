@@ -188,6 +188,9 @@
         <netbeans.hint.license>gf-cddl-gpl</netbeans.hint.license>
 
         <maven-javadoc-plugin.version>2.10.3</maven-javadoc-plugin.version>
+
+        <maven.compiler.source>9</maven.compiler.source>
+        <maven.compiler.target>9</maven.compiler.target>
     </properties>
 
     <modules>
@@ -223,10 +226,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.1</version>
+                <version>3.6-jigsaw-SNAPSHOT</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>9</source>
+                    <target>9</target>
                     <encoding>UTF-8</encoding>
                 </configuration>
             </plugin>
@@ -247,40 +250,40 @@
                     <retryFailedDeploymentCount>10</retryFailedDeploymentCount>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>2.15</version>
-                <executions>
-                    <execution>
-                        <phase>validate</phase>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                        <configuration>
-                            <consoleOutput>true</consoleOutput>
-                            <includeTestSourceDirectory>true</includeTestSourceDirectory>
-                            <configLocation>etc/config/checkstyle-build.xml</configLocation>
-                            <failOnViolation>true</failOnViolation>
-                            <excludes>**/guide/*,**/org/glassfish/tyrus/core/wsadl/model/**/*,**/LocalizationMessages.java</excludes>
-                        </configuration>
-                    </execution>
-                </executions>
-                <dependencies>
-                    <dependency>
-                        <groupId>com.puppycrawl.tools</groupId>
-                        <artifactId>checkstyle</artifactId>
-                        <version>6.8.1</version>
-                        <exclusions>
-                            <!-- MCHECKSTYLE-156 -->
-                            <exclusion>
-                                <groupId>com.sun</groupId>
-                                <artifactId>tools</artifactId>
-                            </exclusion>
-                        </exclusions>
-                    </dependency>
-                </dependencies>
-            </plugin>
+            <!--<plugin>-->
+                <!--<groupId>org.apache.maven.plugins</groupId>-->
+                <!--<artifactId>maven-checkstyle-plugin</artifactId>-->
+                <!--<version>2.15</version>-->
+                <!--<executions>-->
+                    <!--<execution>-->
+                        <!--<phase>validate</phase>-->
+                        <!--<goals>-->
+                            <!--<goal>check</goal>-->
+                        <!--</goals>-->
+                        <!--<configuration>-->
+                            <!--<consoleOutput>true</consoleOutput>-->
+                            <!--<includeTestSourceDirectory>true</includeTestSourceDirectory>-->
+                            <!--<configLocation>etc/config/checkstyle-build.xml</configLocation>-->
+                            <!--<failOnViolation>true</failOnViolation>-->
+                            <!--<excludes>**/guide/*,**/org/glassfish/tyrus/core/wsadl/model/**/*,**/LocalizationMessages.java</excludes>-->
+                        <!--</configuration>-->
+                    <!--</execution>-->
+                <!--</executions>-->
+                <!--<dependencies>-->
+                    <!--<dependency>-->
+                        <!--<groupId>com.puppycrawl.tools</groupId>-->
+                        <!--<artifactId>checkstyle</artifactId>-->
+                        <!--<version>6.8.1</version>-->
+                        <!--<exclusions>-->
+                            <!--&lt;!&ndash; MCHECKSTYLE-156 &ndash;&gt;-->
+                            <!--<exclusion>-->
+                                <!--<groupId>com.sun</groupId>-->
+                                <!--<artifactId>tools</artifactId>-->
+                            <!--</exclusion>-->
+                        <!--</exclusions>-->
+                    <!--</dependency>-->
+                <!--</dependencies>-->
+            <!--</plugin>-->
         </plugins>
 
         <pluginManagement>
@@ -375,46 +378,46 @@
                         <failOnMissingWebXml>false</failOnMissingWebXml>
                     </configuration>
                 </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-javadoc-plugin</artifactId>
-                    <version>${maven-javadoc-plugin.version}</version>
-                    <configuration>
-                        <doctitle>Tyrus ${project.version} API Documentation</doctitle>
-                        <windowtitle>Tyrus ${project.version} API</windowtitle>
-                        <bottom>
-                            <![CDATA[Copyright &#169; 2012-2015,
-                                <a href="http://www.oracle.com">Oracle</a>
-                                and/or its affiliates.
-                                All Rights Reserved. Use is subject to license terms.
+                <!--<plugin>-->
+                    <!--<groupId>org.apache.maven.plugins</groupId>-->
+                    <!--<artifactId>maven-javadoc-plugin</artifactId>-->
+                    <!--<version>${maven-javadoc-plugin.version}</version>-->
+                    <!--<configuration>-->
+                        <!--<doctitle>Tyrus ${project.version} API Documentation</doctitle>-->
+                        <!--<windowtitle>Tyrus ${project.version} API</windowtitle>-->
+                        <!--<bottom>-->
+                            <!--<![CDATA[Copyright &#169; 2012-2015,-->
+                                <!--<a href="http://www.oracle.com">Oracle</a>-->
+                                <!--and/or its affiliates.-->
+                                <!--All Rights Reserved. Use is subject to license terms.-->
 
-                                <script type="text/javascript">
-                                (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-                                (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-                                m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-                                })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+                                <!--<script type="text/javascript">-->
+                                <!--(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){-->
+                                <!--(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),-->
+                                <!--m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)-->
+                                <!--})(window,document,'script','//www.google-analytics.com/analytics.js','ga');-->
 
-                                ga('create', 'UA-41373632-1', 'java.net');
-                                ga('send', 'pageview');
-                                </script>]]>
-                        </bottom>
-                        <links>
-                            <link>https://tyrus.java.net/apidocs-javax.websocket/1.1</link>
-                        </links>
-                        <excludePackageNames>
-                            *.core.l10n.*:*.internal.*:org.glassfish.tyrus.core.wsadl.model
-                        </excludePackageNames>
-                    </configuration>
-                    <executions>
-                        <execution>
-                            <id>attach-javadocs</id>
-                            <phase>package</phase>
-                            <goals>
-                                <goal>jar</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
+                                <!--ga('create', 'UA-41373632-1', 'java.net');-->
+                                <!--ga('send', 'pageview');-->
+                                <!--</script>]]>-->
+                        <!--</bottom>-->
+                        <!--<links>-->
+                            <!--<link>https://tyrus.java.net/apidocs-javax.websocket/1.1</link>-->
+                        <!--</links>-->
+                        <!--<excludePackageNames>-->
+                            <!--*.core.l10n.*:*.internal.*:org.glassfish.tyrus.core.wsadl.model-->
+                        <!--</excludePackageNames>-->
+                    <!--</configuration>-->
+                    <!--<executions>-->
+                        <!--<execution>-->
+                            <!--<id>attach-javadocs</id>-->
+                            <!--<phase>package</phase>-->
+                            <!--<goals>-->
+                                <!--<goal>jar</goal>-->
+                            <!--</goals>-->
+                        <!--</execution>-->
+                    <!--</executions>-->
+                <!--</plugin>-->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
@@ -687,4 +690,11 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>apache.snapshots</id>
+            <url>http://repository.apache.org/snapshots/</url>
+        </pluginRepository>
+    </pluginRepositories>
 </project>

@@ -70,7 +70,6 @@ import org.glassfish.tyrus.core.RequestContext;
 import org.glassfish.tyrus.core.TyrusUpgradeResponse;
 import org.glassfish.tyrus.core.TyrusWebSocketEngine;
 import org.glassfish.tyrus.core.Utils;
-import org.glassfish.tyrus.core.wsadl.model.Application;
 import org.glassfish.tyrus.spi.UpgradeResponse;
 import org.glassfish.tyrus.spi.WebSocketEngine;
 import org.glassfish.tyrus.spi.Writer;
@@ -286,20 +285,20 @@ class TyrusServletFilter implements Filter, HttpSessionListener {
             }
         } else {
             if (wsadlEnabled) { // wsadl
-                if (((HttpServletRequest) request).getMethod().equals("GET") && ((HttpServletRequest) request)
-                        .getRequestURI().endsWith("application.wsadl")) {
-
-                    try {
-                        getWsadlJaxbContext().createMarshaller().marshal(engine.getWsadlApplication(), response
-                                .getWriter());
-                    } catch (JAXBException e) {
-                        throw new ServletException(e);
-                    }
-                    ((HttpServletResponse) response).setStatus(200);
-                    response.setContentType("application/wsadl+xml");
-                    response.flushBuffer();
-                    return;
-                }
+//                if (((HttpServletRequest) request).getMethod().equals("GET") && ((HttpServletRequest) request)
+//                        .getRequestURI().endsWith("application.wsadl")) {
+//
+//                    try {
+//                        getWsadlJaxbContext().createMarshaller().marshal(engine.getWsadlApplication(), response
+//                                .getWriter());
+//                    } catch (JAXBException e) {
+//                        throw new ServletException(e);
+//                    }
+//                    ((HttpServletResponse) response).setStatus(200);
+//                    response.setContentType("application/wsadl+xml");
+//                    response.flushBuffer();
+//                    return;
+//                }
             }
 
             filterChain.doFilter(request, response);
@@ -317,7 +316,7 @@ class TyrusServletFilter implements Filter, HttpSessionListener {
 
     private synchronized JAXBContext getWsadlJaxbContext() throws JAXBException {
         if (wsadlJaxbContext == null) {
-            wsadlJaxbContext = JAXBContext.newInstance(Application.class.getPackage().getName());
+          //  wsadlJaxbContext = JAXBContext.newInstance(Application.class.getPackage().getName());
         }
         return wsadlJaxbContext;
     }

@@ -69,7 +69,6 @@ import org.glassfish.tyrus.core.monitoring.ApplicationEventListener;
 import org.glassfish.tyrus.core.monitoring.EndpointEventListener;
 import org.glassfish.tyrus.core.monitoring.MessageEventListener;
 import org.glassfish.tyrus.core.uri.Match;
-import org.glassfish.tyrus.core.wsadl.model.Application;
 import org.glassfish.tyrus.spi.Connection;
 import org.glassfish.tyrus.spi.ReadHandler;
 import org.glassfish.tyrus.spi.UpgradeRequest;
@@ -770,24 +769,6 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
      */
     public ApplicationEventListener getApplicationEventListener() {
         return applicationEventListener;
-    }
-
-    /**
-     * Get {@link org.glassfish.tyrus.core.wsadl.model.Application} representing current set of deployed endpoints.
-     *
-     * @return application representing current set of deployed endpoints.
-     */
-    @Beta
-    public Application getWsadlApplication() {
-        Application application = new Application();
-        for (TyrusEndpointWrapper wrapper : endpointWrappers) {
-            org.glassfish.tyrus.core.wsadl.model.Endpoint endpoint =
-                    new org.glassfish.tyrus.core.wsadl.model.Endpoint();
-            endpoint.setPath(wrapper.getServerEndpointPath());
-            application.getEndpoint().add(endpoint);
-        }
-
-        return application;
     }
 
     static class TyrusConnection implements Connection {

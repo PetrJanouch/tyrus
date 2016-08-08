@@ -53,12 +53,14 @@ import org.glassfish.tyrus.core.TyrusWebSocketEngine;
 import org.glassfish.tyrus.server.Server;
 import org.glassfish.tyrus.test.tools.TestContainer;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import static org.junit.Assert.assertTrue;
 
 /**
  * @author Pavel Bucek (pavel.bucek at oracle.com)
  */
+@Ignore
 public class WsadlTest extends TestContainer {
 
     public WsadlTest() {

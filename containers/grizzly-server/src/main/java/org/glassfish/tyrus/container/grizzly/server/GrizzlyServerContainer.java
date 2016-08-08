@@ -56,7 +56,6 @@ import org.glassfish.tyrus.core.TyrusWebSocketEngine;
 import org.glassfish.tyrus.core.Utils;
 import org.glassfish.tyrus.core.cluster.ClusterContext;
 import org.glassfish.tyrus.core.monitoring.ApplicationEventListener;
-import org.glassfish.tyrus.core.wsadl.model.Application;
 import org.glassfish.tyrus.server.Server;
 import org.glassfish.tyrus.server.TyrusServerContainer;
 import org.glassfish.tyrus.spi.ServerContainer;
@@ -247,7 +246,7 @@ public class GrizzlyServerContainer extends ServerContainerFactory {
 
         private synchronized JAXBContext getWsadlJaxbContext() throws JAXBException {
             if (wsadlJaxbContext == null) {
-                wsadlJaxbContext = JAXBContext.newInstance(Application.class.getPackage().getName());
+        //        wsadlJaxbContext = JAXBContext.newInstance(Application.class.getPackage().getName());
             }
             return wsadlJaxbContext;
         }
@@ -256,7 +255,7 @@ public class GrizzlyServerContainer extends ServerContainerFactory {
         public void service(Request request, Response response) throws Exception {
             if (request.getMethod().equals(Method.GET) && request.getRequestURI().endsWith("application.wsadl")) {
 
-                getWsadlJaxbContext().createMarshaller().marshal(engine.getWsadlApplication(), response.getWriter());
+              //  getWsadlJaxbContext().createMarshaller().marshal(engine.getWsadlApplication(), response.getWriter());
                 response.setStatus(200);
                 response.setContentType(ContentType.newContentType("application/wsadl+xml"));
 
